@@ -10,10 +10,11 @@ This guide walks you through using OpenSeal to protect your API services and dem
 To use OpenSeal commands anywhere, you first need to build and install the CLI to your system path.
 
 ```bash
-# Navigate to the OpenSeal repository
-cd /root/highpass/openseal
+# Clone the OpenSeal repository (or navigate to it if already cloned)
+git clone https://github.com/highstation/openseal
+cd openseal
 
-# Build and install the CLI globally
+# Build and install the CLI (Run from the project root)
 cargo install --path ./crates/openseal-cli
 
 # Verify installation
@@ -21,16 +22,19 @@ openseal --version
 ```
 
 > [!NOTE]
-> After `cargo install` completes, you can use the `openseal` command directly in any directory.
+> After `cargo install` completes, you can use the `openseal` command directly in any directory. Ensure that Rust's `bin` path (`~/.cargo/bin`) is in your PATH.
 
 ### Step 1: Prepare Sample Project
-Prepare the **Sentence Laundry** API project (also known as Messy Talker) for testing. This project provides a "washing" service that translates text through multiple languages.
+Prepare the **Sentence Laundry** API project (also known as Messy Talker) for testing.
 
 ```bash
-# Navigate to the project directory
-cd /root/sentence-laundry
+# Clone the sample repository and navigate to it
+git clone https://github.com/highstation/sentence-laundry
+cd sentence-laundry
 
 # Activate virtual environment (Recommended for Python)
+# Use python or python3 depending on your environment
+python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies

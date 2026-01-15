@@ -10,10 +10,11 @@
 OpenSeal 명령어를 어디서나 사용하려면 먼저 CLI를 빌드하여 시스템 경로에 등록해야 합니다.
 
 ```bash
-# OpenSeal 레포지토리로 이동
-cd /root/highpass/openseal
+# OpenSeal 레포지토리 클론 (또는 이미 있다면 해당 디렉토리로 이동)
+git clone https://github.com/highstation/openseal
+cd openseal
 
-# CLI 빌드 및 설치 (전역 환경)
+# CLI 빌드 및 설치 (프로젝트 루트에서 실행)
 cargo install --path ./crates/openseal-cli
 
 # 설치 확인
@@ -21,16 +22,19 @@ openseal --version
 ```
 
 > [!NOTE]
-> `cargo install`이 완료되면 `openseal` 명령어를 모든 디렉토리에서 바로 사용할 수 있습니다.
+> `cargo install`이 완료되면 `openseal` 명령어를 모든 디렉토리에서 바로 사용할 수 있습니다. Rust의 `bin` 경로(`~/.cargo/bin`)가 PATH에 등록되어 있어야 합니다.
 
 ### 1단계: 샘플 프로젝트 준비
-테스트를 위해 **문장세탁기 (Sentence Laundry)** API 프로젝트를 준비합니다. 이 프로젝트는 입력을 여러 언어로 번역하여 문장을 "세탁"하는 기능을 제공합니다.
+테스트를 위해 **문장세탁기 (Sentence Laundry)** API 프로젝트를 준비합니다.
 
 ```bash
-# 프로젝트 디렉토리로 이동
-cd /root/sentence-laundry
+# 샘플 레포지토리 클론 및 이동
+git clone https://github.com/highstation/sentence-laundry
+cd sentence-laundry
 
 # 가상 환경 활성화 (Python 프로젝트 권장 사항)
+# 환경에 따라 python 또는 python3를 사용하세요.
+python3 -m venv venv
 source venv/bin/activate
 
 # 의존성 설치
