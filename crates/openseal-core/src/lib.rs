@@ -145,14 +145,39 @@ fn compute_merkle_root(hashes: &[Hash]) -> Hash {
 
 // --- Phase 2: Internalized Pipeline (Sealing Logic) ---
 
+/// Determines what information is included in the Seal based on the environment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SealMode {
+    /// Development mode: Full seal with all debugging information
+    Development,
+    /// Production mode: Signature-only for maximum security and privacy
+    Production,
+}
+
+impl SealMode {
+    /// Detects mode from OPENSEAL_MODE environment variable.
+    /// Defaults to Development for safety (explicit opt-in to production).
+    pub fn from_env() -> Self {
+        match std::env::var("OPENSEAL_MODE") {
+            Ok(val) if val == "production" => SealMode::Production,
+            _ => SealMode::Development,
+        }
+    }
+}
+
 /// The complete seal structure returned to the outside world.
+/// In Production mode, only `signature` is populated; other fields are None.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seal {
-    pub wax: String,        // Hex encoded Wax (Challenge Context)
-    pub pub_key: String,    // Hex encoded Ephemeral Public Key (New)
-    pub a_hash: String,     // Hex encoded Blinded Identity (Project + Wax)
-    pub b_hash: String,     // Hex encoded Result Binding
-    pub signature: String,  // Hex encoded Ed25519 signature (Mandatory in v2.0)
+    pub signature: String,           // Always present (Mandatory)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wax: Option<String>,          // Dev only: Hex encoded Wax
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pub_key: Option<String>,      // Dev only: Ephemeral Public Key
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub a_hash: Option<String>,       // Dev only: Blinded Identity
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub b_hash: Option<String>,       // Dev only: Result Binding
 }
 
 /// Generates the Blinded A-hash (Execution Commitment).

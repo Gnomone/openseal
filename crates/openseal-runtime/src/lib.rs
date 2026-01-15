@@ -117,12 +117,30 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
             
             // let signature = Some(hex::encode(sig.to_bytes()));
 
-            let seal = Seal {
-                wax: wax_hex,
-                pub_key: pub_key_hex,
-                a_hash: a_hash_hex,
-                b_hash: b_hash_hex,
-                signature: hex::encode(sig.to_bytes()),
+            // 6b. Detect Seal Mode
+            let seal_mode = openseal_core::SealMode::from_env();
+            
+            let seal = match seal_mode {
+                openseal_core::SealMode::Development => {
+                    // Full Seal with all debugging information
+                    openseal_core::Seal {
+                        signature: hex::encode(sig.to_bytes()),
+                        wax: Some(wax_hex),
+                        pub_key: Some(pub_key_hex),
+                        a_hash: Some(a_hash_hex),
+                        b_hash: Some(b_hash_hex),
+                    }
+                },
+                openseal_core::SealMode::Production => {
+                    // Signature-only for maximum security
+                    openseal_core::Seal {
+                        signature: hex::encode(sig.to_bytes()),
+                        wax: None,
+                        pub_key: None,
+                        a_hash: None,
+                        b_hash: None,
+                    }
+                }
             };
 
             // 7. Merge & Return (State Transition Response)
