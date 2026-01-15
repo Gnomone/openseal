@@ -16,6 +16,14 @@ To overcome the network limitations of WASM and prevent orchestration tampering,
 *   **Full Integrity**: Seals the entire project (via Merkle Tree) instead of a single file.
 *   **Caller Monopoly**: Replaces the execution caller to capture results as state transitions.
 
+### 🛡️ Security Disclosure Note
+This project intentionally does **NOT** disclose:
+- How valid seals are generated.
+- Any reproducible hash construction.
+- Any function or recipe to bind inputs to outputs.
+
+**Any attempt to recreate a seal generator based solely on this repository is expected to fail by design.**
+
 ---
 
 ## 🏗️ Service Architecture (The Flow)

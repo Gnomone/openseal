@@ -1,0 +1,11 @@
+- [ ] Update `docs/public/SPEC_PUBLIC.md`
+    - [ ] Add Boundary Statement
+    - [ ] Rephrase Verification Process (Remove `compute`, `derive`)
+    - [ ] Abstract A/B Hash relationship
+    - [ ] Obscure b_G and Nonce details
+- [ ] Update `docs/public/ARCHITECTURE.md`
+    - [ ] Soften "State Transition" language
+    - [ ] Remove explicit generation flow
+- [ ] Update `README_KR.md` and `README.md`
+    - [ ] Add Security Disclosure Note
+- [ ] Verify forbidden words are removed from public docs

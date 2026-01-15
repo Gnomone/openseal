@@ -12,9 +12,9 @@ OpenSeal은 API 서버 전체의 무결성을 보장하기 위한 **호출 경�
 *   **사건 (Event)**: 비즈니스 로직의 실제 실행. OpenSeal은 실행 환경을 독점하여 이를 하나의 '사건'으로 캡슐화합니다.
 *   **관 (Case)**: 데이터를 운반하는 껍데기(Django, Express 등). 사건의 정체성에는 관여하나, 내부 데이터에는 접근할 수 없습니다.
 
-### ② 반환값의 재정의: "상태 전이 (State Transition)"
+### ② 반환값의 재정의: "단일 실행 주장 (Atomic Event Assertion)"
 *   OpenSeal 환경에서 실행되는 코드의 `return` 값은 외부로 나가는 데이터가 아닙니다.
-*   이는 **캡슐 내부의 상태를 전이시키는 신호**이며, 런타임에 의해 즉시 흡수되어 봉인(`B-hash`)으로 변환된 후 비로소 세상 밖으로 나갑니다.
+*   이는 **캡슐 내부의 상태를 증명하는 신호**이며, 런타임에 의해 즉시 흡수되어 봉인(`B-hash`)으로 변환된 후 비로소 세상 밖으로 나갑니다.
 
 ---
 
@@ -24,9 +24,9 @@ OpenSeal은 API 서버 전체의 무결성을 보장하기 위한 **호출 경�
 *   OpenSeal은 소스코드를 수정하는 대신, 코드가 실행되는 **런타임 컨텍스트**를 완전히 장악합니다.
 *   **Execution Isolation**: 부모 프로세스(OpenSeal)가 자식 프로세스(App)의 입출력과 메모리 경계를 엄격히 통제합니다.
 
-### ② 동적 b_G 함수
-*   봉인 함수 `b_G`는 요청 시점의 난수(`R`)와 프로젝트 정체성(`A-hash`)에 의해 동적으로 생성됩니다.
-*   공격자가 실행 중인 함수를 탈취하더라도, 다음 요청에서는 다른 `b_G`가 사용되므로 재사용 및 사후 위조가 불가능합니다.
+### ② 동적 검증 함수 (Dynamic Verification)
+*   봉인 로직은 요청 시점마다 동적으로 변화하는 **비결정적 구조**를 가집니다.
+*   공격자가 실행 중인 상태를 관측하더라도, 다음 요청에서는 내부 검증 로직이 달라지므로 재사용 및 사후 위조가 불가능합니다.
 
 ---
 
@@ -34,7 +34,7 @@ OpenSeal은 API 서버 전체의 무결성을 보장하기 위한 **호출 경�
 
 ### 🔑 소스코드 무수정 (Zero-Edit)
 *   개발자는 평소대로 코딩합니다.
-*   OpenSeal은 API의 **호찰 경계(Call Boundary)**를 감싸서, "실행하지 않으면 결과에 대응하는 봉인을 제작할 수 없는 구조"를 강제합니다.
+*   OpenSeal은 API의 **호출 경계(Call Boundary)**를 감싸서, "실행하지 않으면 결과에 대응하는 봉인을 제작할 수 없는 구조"를 강제합니다.
 
 ### 🔑 경제적 무결성 (Economic Integrity)
 *   본 모델은 루트(ROOT) 권한을 가진 공격자가 실시간으로 메모리를 계측하여 조작하는 것을 '불가능'하다고 주장하지 않습니다.
@@ -42,7 +42,7 @@ OpenSeal은 API 서버 전체의 무결성을 보장하기 위한 **호출 경�
 
 ---
 
-> **OpenSeal: The return value is never trusted as data — it is consumed as a state transition inside a sealed runtime.**
+> **OpenSeal: The return value is never trusted as data — it is consumed as a state assertion inside a sealed runtime.**
 
 ---
 
@@ -53,21 +53,21 @@ OpenSeal은 API 서버 전체의 무결성을 보장하기 위한 **호출 경�
 ```mermaid
 graph TD
     A[📂 Source Code Repo] -->|openseal build| B[📦 Sealed Bundle]
-    B -->|A-hash Identity| C{OpenSeal Runtime}
+    B -->|Identity Check| C{OpenSeal Runtime}
     
     subgraph Caller Monopoly [호출자 독점 영역]
         C -->|Spawn| D[🔒 Child Process (API Server)]
-        E[User Request] -->|Nonce + Inputs| C
+        E[User Request] -->|Context Injection| C
         C --Proxy--> D
         D --Result--> C
-        C -->|Seal (A + Result + Nonce)| F[B-hash Generation]
+        C -->|P(Event)| F[Proof Binding]
     end
 
     F -->|Response + Seal| G[Client]
 ```
 
 1.  **빌드 (`openseal build`)**:
-    *   레포지토리의 소스코드를 스캔하여 `A-hash`(프로젝트 정체성)를 생성하고 패키징합니다.
+    *   레포지토리의 소스코드를 스캔하여 `A-hash`(운영전 식별자)를 확정하고 패키징합니다.
     *   API 서버 자체는 수정되지 않습니다.
 
 2.  **실행 (`openseal run`)**:
@@ -75,6 +75,6 @@ graph TD
     *   외부 접근을 차단하고, 오직 OpenSeal을 통해서만 통신할 수 있습니다.
 
 3.  **봉인 (Sealing)**:
-    *   **입력**: API 서버는 실행 시 `Nonce`(난수)를 주입받습니다.
-    *   **실행**: 코드는 레포지토리 원본(`A-hash`) 그대로 실행됨을 보장받습니다.
-    *   **출력**: 실행 결과와 난수가 결합되어 `B-hash`로 봉인되며, **"실행하지 않고는 결과를 위조할 수 없음"**을 증명합니다.
+    *   **입력**: API 서버는 실행 시 고유 식별자(`Nonce`)를 주입받습니다.
+    *   **실행**: 코드는 레포지토리 원본 그대로 실행됨을 보장받습니다.
+    *   **출력**: 실행 결과는 런타임에 의해 **"실행하지 않고는 결과를 위조할 수 없음"**을 증명하는 봉인으로 변환됩니다.

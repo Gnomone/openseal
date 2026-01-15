@@ -1,13 +1,14 @@
 # 🔍 OpenSeal v2.0 공개 검증 명세 (Public Verification Spec)
 
 > **⚠️ 경계 선언 (Boundary Statement)**
-> 본 명세는 **검증을 위한 규칙(Verification Rules)**만을 정의하며,
-> OpenSeal 실행 증명의 **생성 방법(Generation Recipe)**은 의도적으로 포함하지 않습니다.
+> 본 문서는 **OpenSeal의 검증 가능성(Verifiability)**을 설명하기 위한 것이며,
+> 어떠한 경우에도 **유효한 Seal을 생성하거나 재현하는 방법**을 포함하지 않습니다.
+> 생성 규칙, 결합 순서, 내부 상태 전이는 의도적으로 생략되거나 추상화됩니다.
 
 ---
 
 ## 1. 개요 (Overview)
-OpenSeal 검증기(Verifier)는 주어진 결과(Result)와 봉인(Seal)이 **"특정 시점에, 특정 코드에 의해 정직하게 생성되었는지"**를 판단합니다.
+OpenSeal 검증기(Verifier)는 주어진 결과(Result)와 봉인(Seal)이 **"등록된 실행 컨텍스트와 내부적으로 일관된 상태 전이를 나타내는지"**를 검증합니다.
 
 ### 검증 모델
 ```text
@@ -23,10 +24,10 @@ OpenSeal 런타임이 반환하는 증명 객체입니다.
 
 | 필드 | 설명 | 검증 가능 여부 |
 |:---:|:---|:---:|
-| `a_hash` | **실행 전(Pre-execution)** 상태의 식별자 (프로젝트 정체성) | ✅ Public Verifiable |
-| `b_hash` | **실행 후(Post-execution)** 상태의 봉인값 | ✅ Public Verifiable |
-| `nonce` | 실행의 고유성을 보장하기 위해 주입된 난수 | ✅ Public Verifiable |
-| `signature` | 위 데이터들에 대한 OpenSeal 런타임의 전자서명 | ✅ Public Verifiable |
+| `a_hash` | **사전 상태 식별자 (Pre-State ID)** | ✅ Public Assertion |
+| `b_hash` | **사후 상태 식별자 (Post-State ID)** | ✅ Public Assertion |
+| `nonce` | 실행의 **유일성(Uniqueness)**을 보장하기 위한 외부 식별자 | ✅ Public Assertion |
+| `signature` | 위 데이터들에 대한 OpenSeal 런타임의 전자서명 | ✅ Public Assertion |
 
 ### 2.2 결과 (Result)
 실제 API 서버가 반환한 응답 데이터(JSON, String, Binary 등)입니다. OpenSeal은 이 데이터를 "값"이 아닌 "상태 전이의 증거"로 취급합니다.
@@ -39,17 +40,15 @@ OpenSeal 런타임이 반환하는 증명 객체입니다.
 
 ### Step 1: A-hash 검증 (Identity Check)
 *   **개념**: "이 결과가 내가 아는 그 프로젝트에서 나왔는가?"
-*   **방법**: 로컬 소스코드(또는 알려진 머클루트)와 `Seal.a_hash`가 일치하는지 비교합니다.
-    *   `Local_Merkle_Root == Seal.a_hash`
+*   **방법**: 로컬 소스코드(또는 알려진 머클루트)와 `Seal.a_hash`가 일치하는지 확인합니다.
 
 ### Step 2: B-hash 검증 (Binding Check)
 *   **개념**: "결과가 조작되지 않았고, 해당 실행 맥락(Nonce)에서 나왔는가?"
-*   **방법**: 제공된 `Result`, `Nonce`, `A-hash`를 결합하여 `Expected_B_hash`를 계산하고, `Seal.b_hash`와 비교합니다.
-    *   `Function(Result, Nonce, A_hash) == Seal.b_hash`
-    *   *Note: 구체적인 결합 함수는 구현체의 내부 로직에 따릅니다.*
+*   **방법**: Verifier는 Seal에 포함된 검증 증명이 **실행 결과와 모순되지 않음을 확인(Assert)**합니다.
+    *   *Note: Seal 내부 로직은 요청 단위로 변화하며, 외부에서 그 구조를 예측하거나 재사용할 수 없습니다.*
 
 ### Step 3: 서명 검증 (Authenticity Check)
-*   **개념**: "이 봉인이 신뢰할 수 있는 OpenSeal 런타임(또는 HighStation)에 의해 서명되었는가?"
+*   **개념**: "이 봉인이 신뢰할 수 있는 OpenSeal 런타임에 의해 서명되었는가?"
 *   **방법**: `Seal.signature`가 `Seal` 데이터 내용에 대해 유효한지 검증합니다.
 
 ---
@@ -58,9 +57,9 @@ OpenSeal 런타임이 반환하는 증명 객체입니다.
 
 다음 중 하나라도 해당되면 **INVALID**로 판정해야 합니다.
 
-1.  **Identity Mismatch**: 제출된 `A-hash`가 기대하는 소스코드의 해시와 다름. (소스코드 변조 의심)
-2.  **Binding Failure**: `Result`를 이용해 재계산한 `B-hash`가 제출된 값과 다름. (결과값 조작 의심)
-3.  **Replay Attack**: 이미 사용된 `Nonce`가 재사용됨.
+1.  **Identity Mismatch**: 제출된 `A-hash`가 기대하는 식별자와 다름.
+2.  **Binding Failure**: Seal이 실행 결과와 논리적으로 일치하지 않음.
+3.  **Replay Attack**: 이미 사용된 `Nonce`가 재사용됨. (재사용 시 검증은 실패함)
 4.  **Signature Error**: 서명 검증 실패.
 
 ---
