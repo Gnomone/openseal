@@ -73,7 +73,7 @@ OpenSeal determines which files to include in the Merkle Tree based on the follo
 ### 3.1 Total Exclusion
 These files are completely excluded from the **File Integrity Check (A-hash)** and will not be included in the build output.
 *   **Behavior**: Similar to `.gitignore`, it is applied to the subtree relative to the **directory where the file is located**. (Placing it at the project root is recommended.)
-*   **`.gitignore`**: Respects standard Git ignore rules.
+*   **`.gitignore`**: Respects standard Git ignore rules (e.g., `node_modules/`, `venv/`, `dist/`).
 *   **`.opensealignore`**: OpenSeal-specific exclusion rules. Uses the same syntax as `.gitignore`. Any pattern defined here is **100% ignored**, from its existence in the hash to its presence in the output.
 
 > [!IMPORTANT]
@@ -81,7 +81,7 @@ These files are completely excluded from the **File Integrity Check (A-hash)** a
 
 ### 3.2 Content Exclusion (Mutable Files)
 Used when you want to seal the **existence (structure)** of a file but allow its **content** to change (e.g., local databases, logs).
-*   **`.openseal_mutable`**: Files matching patterns in this file (e.g., `*.db`, `logs/`) will not affect the overall integrity proof even if their content changes.
+*   **`.openseal_mutable`**: Files matching patterns in this file (e.g., `venv/`, `*.db`, `logs/`) will not affect the overall integrity proof even if their content changes.
 *   **Security**: For security reasons, setting critical code files (`.js`, `.py`, `.rs`, etc.) as mutable is strictly forbidden and will be rejected by the runtime.
 
 ---
