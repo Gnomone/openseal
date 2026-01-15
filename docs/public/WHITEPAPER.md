@@ -58,13 +58,13 @@ OpenSeal implements this insight through a rigid, atomic pipeline:
     Before running, the entire codebase (Project Directory) is hashed into a Merkle Root (`A-hash`). This defines the "Identity" of the logic.
 
 2.  **Atomic Execution Boundary**:
-    The OpenSeal Runtime monopolizes the execution context (Caller Monopoly). It acts as the parent process, injecting a strict, one-time execution token (`Nonce`).
+    The OpenSeal Runtime monopolizes the execution context (Caller Monopoly). It acts as the parent process, injecting a strict, one-time execution token (`Wax`).
 
 3.  **One-Way Sealing**:
-    Upon completion, the runtime captures the result and combines it with the Identity (`A`) and Nonce (`N`) using a **dynamic, non-reproducible function**.
+    Upon completion, the runtime captures the result and combines it with the Identity (`A`) and Wax (`W`) using a **dynamic, non-reproducible function**.
 
 4.  **Post-State Assertion**:
-    The final output is a `Seal` that asserts: *"This result is the inevitable outcome of running Project A with Input I and Nonce N."*
+    The final output is a `Seal` that asserts: *"This result is the inevitable outcome of running Project A with Input I and Wax W."*
 
 ---
 

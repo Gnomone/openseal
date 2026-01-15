@@ -83,14 +83,11 @@ openseal build --source . --output dist --exec "node app.js"
 ```
 
 ### 2. Running a Sealed Service (`openseal run`)
-OpenSeal becomes the **Parent Process**, spawning the application as a child process and isolating it. External access is only possible via the OpenSeal Proxy (8080).
+OpenSeal becomes the **Parent Process**, spawning the application as a child process and isolating it. External access is only possible via the OpenSeal Proxy (7325).
 
 ```bash
-# Standard Execution (Signed)
-openseal run --app ./dist --port 8080
-
-# Unsigned Mode (Logic Verification Only, No Key)
-openseal run --app ./dist --port 8080 --no-key
+# Standard Execution
+openseal run --app ./dist --port 7325
 ```
 
 ---
@@ -98,8 +95,8 @@ openseal run --app ./dist --port 8080 --no-key
 ## 🔒 Security Model
 
 ### What it Protects
-*   **A-hash Tampering**: Modifying even 1 byte of source code changes the Identity, instantly detectable.
-*   **Post-execution Forgery**: Thanks to the dynamic `b_G` function, one cannot forge a seal without honest execution.
+*   **Source Code Tampering**: Modifying even 1 byte of code or environment before execution will cause sealing authentication to fail.
+*   **Result Manipulation**: Mathematically guarantees that the result was honestly produced by that specific source code. (Result-Code Binding)
 
 ### Limitations (The ROOT Problem)
 A ROOT-level attacker with real-time measurement can theoretically tamper with memory. However, OpenSeal is designed such that **"the cost of forgery is greater than or equal to the cost of honest execution,"** achieving economic integrity.

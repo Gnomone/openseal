@@ -79,6 +79,6 @@ graph TD
     *   External access is blocked; communication is only possible via OpenSeal.
 
 3.  **Sealing**:
-    *   **Input**: The API server receives a unique identifier (`Nonce`) upon execution.
+    *   **Input**: The API server receives a unique identifier (`Wax`) upon execution.
     *   **Execution**: The code is guaranteed to run exactly as it exists in the repository.
     *   **Output**: The execution result is converted by the runtime into a Seal proving **"the result could not be forged without execution."**

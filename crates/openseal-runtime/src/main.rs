@@ -6,7 +6,7 @@ use openseal_runtime::run_proxy_server;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Port to listen on (External entry point)
-    #[arg(long, default_value = "8080")]
+    #[arg(short, long, default_value = "7325")]
     port: u16,
 
     /// Target URL of the internal application to wrap (e.g., http://localhost:8000)

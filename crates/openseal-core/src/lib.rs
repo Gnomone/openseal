@@ -115,7 +115,35 @@ fn load_mutable_patterns(root: &Path) -> Vec<String> {
     }
 }
 
-// ... (compute_mutable_file_hash, compute_file_hash, compute_merkle_root unchanged) ...
+fn compute_file_hash(path: &Path) -> Result<Hash> {
+    let mut file = fs::File::open(path).with_context(|| format!("Failed to open file: {:?}", path))?;
+    let mut hasher = blake3::Hasher::new();
+    let mut buffer = [0; 65536];
+    loop {
+        let count = file.read(&mut buffer).context("Failed to read file")?;
+        if count == 0 { break; }
+        hasher.update(&buffer[..count]);
+    }
+    Ok(hasher.finalize())
+}
+
+fn compute_mutable_file_hash(rel_path: &Path) -> Hash {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"MUTABLE_MARKER");
+    hasher.update(rel_path.to_string_lossy().as_bytes());
+    hasher.finalize()
+}
+
+fn compute_merkle_root(hashes: &[Hash]) -> Hash {
+    if hashes.is_empty() {
+        return blake3::hash(b"EMPTY_PROJECT");
+    }
+    let mut hasher = blake3::Hasher::new();
+    for h in hashes {
+        hasher.update(h.as_bytes());
+    }
+    hasher.finalize()
+}
 
 // --- Phase 2: Internalized Pipeline (Sealing Logic) ---
 
@@ -126,7 +154,7 @@ pub struct Seal {
     pub pub_key: String,    // Hex encoded Ephemeral Public Key (New)
     pub a_hash: String,     // Hex encoded Blinded Identity (Project + Wax)
     pub b_hash: String,     // Hex encoded Result Binding
-    pub signature: Option<String>,  // Hex encoded Ed25519 signature
+    pub signature: String,  // Hex encoded Ed25519 signature (Mandatory in v2.0)
 }
 
 /// Generates the Blinded A-hash (Execution Commitment).
@@ -237,18 +265,18 @@ mod tests {
     #[test]
     fn test_dynamic_b_hash_binding() {
         let a_hash = blake3::hash(b"PROJECT_IDENTITY");
-        let nonce1 = "NONCE_1";
-        let nonce2 = "NONCE_2";
+        let wax1 = "WAX_1";
+        let wax2 = "WAX_2";
         let result = b"Execution Result";
 
-        let b1 = compute_b_hash(&a_hash, nonce1, result);
-        let b2 = compute_b_hash(&a_hash, nonce2, result);
+        let b1 = compute_b_hash(&a_hash, wax1, result);
+        let b2 = compute_b_hash(&a_hash, wax2, result);
         
-        // Different nonces should produce different B-hashes even if A and Result are same
+        // Different waxes should produce different B-hashes even if A and Result are same
         assert_ne!(b1, b2);
 
         let a_hash_modified = blake3::hash(b"PROJECT_IDENTITY_MODIFIED");
-        let b3 = compute_b_hash(&a_hash_modified, nonce1, result);
+        let b3 = compute_b_hash(&a_hash_modified, wax1, result);
 
         // Different A-hash should produce different B-hashes
         assert_ne!(b1, b3);

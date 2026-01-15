@@ -17,10 +17,10 @@ use ed25519_dalek::{SigningKey, Signer};
 struct AppState {
     target_url: String,
     project_identity: ProjectIdentity,
-    signing_key: Option<SigningKey>,
+    signing_key: SigningKey,
 }
 
-pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathBuf, use_key: bool) -> anyhow::Result<()> {
+pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathBuf) -> anyhow::Result<()> {
     println!("🔐 OpenSeal Runtime v0.2.0 Starting...");
     println!("   Target App: {}", target_url);
     println!("   Project Root: {:?}", project_root);
@@ -31,24 +31,18 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
     println!("   ✅ A-hash (Root): {}", identity.root_hash.to_hex());
     println!("   📄 Files Sealed: {}", identity.file_count);
 
-    // Generate a strictly ephemeral signing key for this runtime session IF enabled
-    let signing_key = if use_key {
-        let mut csprng = OsRng;
-        let mut key_bytes = [0u8; 32];
-        csprng.fill_bytes(&mut key_bytes);
-        let key = SigningKey::from_bytes(&key_bytes);
-        let verifying_key = key.verifying_key();
-        println!("   🔑 Public Key (Ephemeral): {}", hex::encode(verifying_key.to_bytes()));
-        Some(key)
-    } else {
-        println!("   ⚠️  Key Generation DISABLED (Unsigned Mode)");
-        None
-    };
+    // Generate a strictly ephemeral signing key for this runtime session (Mandatory in v2.0)
+    let mut csprng = OsRng;
+    let mut key_bytes = [0u8; 32];
+    csprng.fill_bytes(&mut key_bytes);
+    let key = SigningKey::from_bytes(&key_bytes);
+    let verifying_key = key.verifying_key();
+    println!("   🔑 Public Key (Ephemeral): {}", hex::encode(verifying_key.to_bytes()));
 
     let state = Arc::new(AppState {
         target_url,
         project_identity: identity,
-        signing_key,
+        signing_key: key,
     });
 
     let app = Router::new()
@@ -96,7 +90,7 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
     // Call the Internal Logic (The Case)
     let response_result = client
         .request(method, &target_uri)
-        .headers(headers) // Forward headers with Nonce
+        .headers(headers) // Forward headers with Wax
         .body(body_bytes)
         .send()
         .await;
@@ -104,7 +98,7 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
     match response_result {
         Ok(resp) => {
             // 4. Result Capture (Egress Interception)
-            let status = resp.status();
+            let _status = resp.status();
             let resp_bytes = resp.bytes().await.unwrap_or_default();
 
             // 5. Atomic Sealing (B-hash generation)
@@ -114,25 +108,21 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
 
             // 6. Optional Sign the Seal
             // Signature = Sign(Wax || A || B || SHA256(Result))
-            let (signature, pub_key_hex) = if let Some(key) = &state.signing_key {
-                 // Calculate Result Hash for binding
-                 let result_hash = blake3::hash(&resp_bytes).to_hex().to_string();
-                 
-                 let sign_payload = format!("{}{}{}{}", wax_hex, a_hash_hex, b_hash_hex, result_hash);
-                 let sig = key.sign(sign_payload.as_bytes());
-                 let pub_key = hex::encode(key.verifying_key().to_bytes());
-                 
-                 (Some(hex::encode(sig.to_bytes())), pub_key)
-            } else {
-                (None, String::from("UNSIGNED_MODE"))
-            };
+            // Calculate Result Hash for binding
+            let result_hash = blake3::hash(&resp_bytes).to_hex().to_string();
+            
+            let sign_payload = format!("{}{}{}{}", wax_hex, a_hash_hex, b_hash_hex, result_hash);
+            let sig = state.signing_key.sign(sign_payload.as_bytes());
+            let pub_key_hex = hex::encode(state.signing_key.verifying_key().to_bytes());
+            
+            // let signature = Some(hex::encode(sig.to_bytes()));
 
             let seal = Seal {
                 wax: wax_hex,
                 pub_key: pub_key_hex,
                 a_hash: a_hash_hex,
                 b_hash: b_hash_hex,
-                signature,
+                signature: hex::encode(sig.to_bytes()),
             };
 
             // 7. Merge & Return (State Transition Response)
