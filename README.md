@@ -72,12 +72,12 @@ OpenSeal determines which files to include in the Merkle Tree based on the follo
 
 ### 3.1 Total Exclusion
 These files are completely excluded from the **File Integrity Check (A-hash)** and will not be included in the build output.
-*   **Base Directory**: All paths are relative to the **Project Root** (the source path provided during `openseal build`).
+*   **Behavior**: Similar to `.gitignore`, it is applied to the subtree relative to the **directory where the file is located**. (Placing it at the project root is recommended.)
 *   **`.gitignore`**: Respects standard Git ignore rules.
 *   **`.opensealignore`**: OpenSeal-specific exclusion rules. Uses the same syntax as `.gitignore`. Any pattern defined here is **100% ignored**, from its existence in the hash to its presence in the output.
 
 > [!IMPORTANT]
-> **Integrity of Configurations**: `.opensealignore`, `.openseal_mutable`, and the generated `openseal.json` themselves **are included** in the **File Integrity Check (A-hash)**. This prevents attackers from modifying exclusion rules to bypass security.
+> **Integrity of Configurations (Self-Inclusion)**: `.opensealignore`, `.openseal_mutable`, and the generated `openseal.json` themselves **are included** in the **File Integrity Check (A-hash)**. If a provider modifies these rules to bypass security, the integrity check will fail as the configuration files themselves are considered tampered.
 
 ### 3.2 Content Exclusion (Mutable Files)
 Used when you want to seal the **existence (structure)** of a file but allow its **content** to change (e.g., local databases, logs).
