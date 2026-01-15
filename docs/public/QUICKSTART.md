@@ -6,63 +6,71 @@ This guide walks you through using OpenSeal to protect your API services and dem
 
 ## 🚀 Step-by-Step Tutorial
 
-### Step 1: Prepare a Sample Project (or Your Own)
-Prepare a simple API server for testing. If you don't have one, clone the [OpenSeal Samples](https://github.com/org/openseal-samples) to get started.
+### Step 1: Prepare Sample Project
+Prepare the **Sentence Laundry** API project (also known as Messy Talker) for testing. This project provides a "washing" service that translates text through multiple languages.
 
 ```bash
-# Example: Cloning the sample repository
-git clone https://github.com/org/openseal-samples
-cd openseal-samples/nodejs-example
-npm install
+# Navigate to the project directory
+cd /root/highpass/sentence-laundry
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-> [!NOTE]
-> This sample API is [description pending]. It will include basic numerical operations or text processing examples.
-
-### Step 2: Establish the Golden Truth (Sealing)
-Extract a signature of the "Golden Truth"—the most honest state of your project. This signature will be your benchmark for verification.
+### Step 2: Seal the Project
+Use the `openseal build` command to seal the entire source code with a Merkle Tree and prepare the executable.
 
 ```bash
-# Use openseal-cli to extract the correct signature for a specific input
-./openseal seal \
-  --app ./nodejs-example \
-  --wax "my_first_test_123" \
-  --input '{"name": "OpenSeal"}'
+# Build with OpenSeal (Extract source integrity fingerprint & Package)
+openseal build --source . --output ./dist --exec "python3 main.py"
 ```
 
 **Example Output:**
-> ⚖️ **Golden Truth Signature**: `a1b2c3d4e5f6...`  
-> (Save this value in a notepad)
+> ✅ **Root A-Hash**: `19bf5835...` (This is the unique identity of your project)  
+> 📥 Copied files to build directory.
 
-### Step 3: Run the Server with OpenSeal Runtime
-Now, run your service inside the OpenSeal protective envelope.
+### Step 3: Run with OpenSeal Runtime
+Execute your service within the OpenSeal protective layer. The runtime runs the API as a child process and intercepts all I/O to bind signatures.
 
 ```bash
-# Run the OpenSeal runtime on port 7325 (Internal app is automatically detected and executed)
-openseal run ./nodejs-example --port 7325
+# Run OpenSeal runtime on port 7325
+openseal run --app ./dist --port 7325
 ```
 
 ### Step 4: Verify Normal Operation
-Call the API and confirm that the signature accompanying the response matches the Golden Truth.
+Call the API and check the **Wax** signature included in the response.
 
 ```bash
-curl -X POST http://127.0.0.1:7325/greet \
-  -H "X-OpenSeal-Wax: my_first_test_123" \
+curl -X POST http://127.0.0.1:7325/wash \
   -H "Content-Type: application/json" \
-  -d '{"name": "OpenSeal"}'
+  -H "X-OpenSeal-Wax: my-secret-session-123" \
+  -d '{"text": "The weather is really nice today."}'
 ```
 
-**Confirmation**: If the `openseal.signature` value in the response JSON matches the value you saved in Step 2, it's **Normal**! ✅
+**Verification**: Note the signature (`openseal_signature`) returned in the header or JSON. This is your **Golden Truth**. ✅
 
-### Step 5: Proof of Tampering (Tampering Attack)
+### Step 5: Demonstrate Tampering (Attack)
 Now, intentionally modify the source code to see how OpenSeal detects it.
 
-1. Open `nodejs-example/index.js` and slightly modify the response text (e.g., change `Hello` to `Hi`).
-2. Restart the server: `openseal run ./nodejs-example --port 7325`
-3. Run the **exact same** `curl` command from Step 4.
+1. Open `translator.py` and slightly modify the translation logic or text processing (e.g., append a specific word).
+2. Re-build and run:
+   ```bash
+   openseal build --source . --output ./dist --exec "python3 main.py"
+   openseal run --app ./dist --port 7325
+   ```
+3. Execute the **exact same** `curl` command from Step 4.
 
-**Confirmation**: The `signature` in the response will now be **completely different.** ❌  
-This proves that even a single-byte change in the source code breaks the proof bound to the result.
+**Verification**: If even a single byte of source code has been tampered with, the `signature` value in the response **will be completely different.** ❌  
+This cryptographically proves that the identity of the code being executed has changed.
+
+---
+
+## 🛡️ Using Exclusion Rules
+
+Files like `venv/` or `__pycache__/` in Python projects should be excluded from integrity checks. OpenSeal respects `.gitignore` by default and allows additional rules via `.opensealignore`.
+
+- **Total Exclusion**: Add `venv/` to `.opensealignore` (ignores the file's existence).
+- **Content-only Exclusion (Mutable)**: Add `*.log` to `.openseal_mutable` (verifies existence but ignores content).
 
 ---
 
