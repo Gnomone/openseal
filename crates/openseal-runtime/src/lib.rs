@@ -2,11 +2,11 @@ use axum::{
     body::Body,
     extract::{Request, State},
     http::{HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::any,
     Router,
 };
-use openseal_core::{compute_a_hash, compute_b_hash, compute_project_identity, ProjectIdentity, Seal};
+use openseal_core::{compute_a_hash, compute_b_hash, compute_project_identity, ProjectIdentity};
 use rand::{rngs::OsRng, RngCore};
 use std::path::PathBuf;
 use std::sync::Arc;

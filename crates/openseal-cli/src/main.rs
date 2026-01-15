@@ -75,6 +75,9 @@ async fn main() -> Result<()> {
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 
+            // 0. Ensure Configuration Files exist (Lazy Init)
+            ensure_config_files(source)?;
+
             // 1. Calculate Identity (Verification)
             println!("   🔍 Scanning and Sealing...");
             let identity = compute_project_identity(source)?;
@@ -217,5 +220,20 @@ async fn main() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+fn ensure_config_files(source: &Path) -> Result<()> {
+    let ignore_path = source.join(".opensealignore");
+    if !ignore_path.exists() {
+        println!("   📝 Creating default .opensealignore...");
+        fs::write(&ignore_path, "# OpenSeal Ignore Rules\n# Add files/folders to exclude from the File Integrity Check (A-hash)\n# Syntax is same as .gitignore\n\n# node_modules/\n# venv/\n# .env\n")?;
+    }
+
+    let mutable_path = source.join(".openseal_mutable");
+    if !mutable_path.exists() {
+        println!("   📝 Creating default .openseal_mutable...");
+        fs::write(&mutable_path, "# OpenSeal Mutable Files\n# Add files whose presence is sealed but content can change\n# (e.g., local databases, logs)\n\n# *.db\n# logs/\n")?;
+    }
     Ok(())
 }

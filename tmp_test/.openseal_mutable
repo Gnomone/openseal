@@ -1,0 +1,6 @@
+# OpenSeal Mutable Files
+# Add files whose presence is sealed but content can change
+# (e.g., local databases, logs)
+
+# *.db
+# logs/

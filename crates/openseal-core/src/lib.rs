@@ -42,7 +42,7 @@ pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
 
     file_paths.sort();
     
-    let mut mutable_files_found = Vec::new();
+    
 
     let file_hashes: Vec<(Hash, Option<String>)> = file_paths.par_iter()
         .map(|path| {
@@ -72,7 +72,7 @@ pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
 
     // Extract mutable files and hashes
     let (hashes, mut_files): (Vec<Hash>, Vec<Option<String>>) = file_hashes.into_iter().unzip();
-    mutable_files_found = mut_files.into_iter().filter_map(|x| x).collect();
+    let mutable_files_found: Vec<String> = mut_files.into_iter().filter_map(|x| x).collect();
 
     let root_hash = compute_merkle_root(&hashes);
 
