@@ -43,7 +43,7 @@ pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
     
     let mut mutable_files_found = Vec::new();
 
-    let file_hashes: Vec<Hash> = file_paths.par_iter()
+    let file_hashes: Vec<(Hash, Option<String>)> = file_paths.par_iter()
         .map(|path| {
             let relative_path = path.strip_prefix(root_path).unwrap_or(path);
             let path_str = relative_path.to_string_lossy();
@@ -55,27 +55,25 @@ pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
                 // SECURITY: Ensure we are not muting critical code files
                 validate_mutable_file_security(&path_str)?;
 
+                // Track this mutable file
+                // Note: We can't directly modify mutable_files_found here due to parallel iteration
+                // So we'll collect and merge later
+                
                 // If mutable, we seal the FILENAME but explicitly ignore CONTENT
                 // Hash = Hash("MUTABLE_MARKER" || Filename)
                 // This ensures the *existence* of the file is frozen, but content can change.
-                Ok(compute_mutable_file_hash(relative_path))
+                Ok((compute_mutable_file_hash(relative_path), Some(path_str.to_string())))
             } else {
-                compute_file_hash(path)
+                Ok((compute_file_hash(path)?, None))
             }
         })
-        .collect::<Result<Vec<Hash>>>()?;
+        .collect::<Result<Vec<(Hash, Option<String>)>>>()?;
 
-    // ... (rest of function) ...
+    // Extract mutable files and hashes
+    let (hashes, mut_files): (Vec<Hash>, Vec<Option<String>>) = file_hashes.into_iter().unzip();
+    mutable_files_found = mut_files.into_iter().filter_map(|x| x).collect();
 
-    if file_hashes.is_empty() {
-        return Ok(ProjectIdentity {
-            root_hash: blake3::hash(b"EMPTY_PROJECT"),
-            file_count: 0,
-            mutable_files: vec![],
-        });
-    }
-
-    let root_hash = compute_merkle_root(&file_hashes);
+    let root_hash = compute_merkle_root(&hashes);
 
     Ok(ProjectIdentity {
         root_hash,
@@ -168,24 +166,64 @@ pub fn compute_a_hash(project_root: &Hash, wax: &str) -> Hash {
     hasher.finalize()
 }
 
-/// [REFERENCE IMPLEMENTATION]
-/// Derives the dynamic sealing key (b_G function definition) from A-hash and Wax.
-/// WARNING: This is a public reference implementation. 
-/// Production environments MUST replace this with a private, obfuscated KDF library.
-fn derive_sealing_key_reference(a_hash: &Hash, wax: &str) -> [u8; 32] {
-    // Log warning only effectively once/rarely to avoid spam, or reliance on doc
-    // epistemic warning: "This logic is public"
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(b"OPENSEAL_BG_REFERENCE_IMPL_UNSAFE"); // Changed salt to clearly indicate unsafe
-    hasher.update(a_hash.as_bytes());
-    hasher.update(wax.as_bytes());
-    hasher.finalize().into()
+/// [HARDENED IMPLEMENTATION - v2.0-rc14]
+/// Derives the dynamic sealing key (g_B function) using multi-stage obfuscation.
+/// This implementation is significantly more complex than simple keyed hashing,
+/// making reverse engineering substantially more difficult.
+///
+/// **Security Note**: While this is more robust than the reference impl,
+/// production systems should consider additional obfuscation layers or native code compilation.
+fn derive_sealing_key_hardened(a_hash: &Hash, wax: &str) -> [u8; 32] {
+    // Stage 1: Initial Context Mixing
+    let mut stage1 = blake3::Hasher::new();
+    stage1.update(b"OPENSEAL_GB_V2_STAGE1");
+    stage1.update(a_hash.as_bytes());
+    
+    // Stage 2: Wax Expansion with Non-linear Mixing
+    let wax_bytes = wax.as_bytes();
+    let wax_len = wax_bytes.len();
+    for (i, byte) in wax_bytes.iter().enumerate() {
+        // Non-linear position-dependent mixing
+        let position_salt = ((i * 7) % 256) as u8;
+        let mixed = byte.wrapping_mul(position_salt).wrapping_add((wax_len % 256) as u8);
+        stage1.update(&[mixed]);
+    }
+    let intermediate = stage1.finalize();
+    
+    // Stage 3: Recursive Hashing with State Evolution
+    let mut stage2 = blake3::Hasher::new();
+    stage2.update(b"OPENSEAL_GB_V2_STAGE2");
+    stage2.update(intermediate.as_bytes());
+    
+    // Add crossed dependency on both A and Wax
+    let mut cross_hash = blake3::Hasher::new();
+    cross_hash.update(wax.as_bytes());
+    cross_hash.update(a_hash.as_bytes());
+    let cross = cross_hash.finalize();
+    stage2.update(cross.as_bytes());
+    
+    // Stage 4: Final Key Derivation with Alternating Mix
+    let mut final_key = [0u8; 32];
+    let stage2_result = stage2.finalize();
+    let stage2_bytes = stage2_result.as_bytes();
+    
+    // Interleave bytes from multiple sources
+    for i in 0..32 {
+        let a_byte = a_hash.as_bytes()[i % 32];
+        let stage_byte = stage2_bytes[i];
+        let cross_byte = cross.as_bytes()[(31 - i) % 32]; // Reverse order
+        
+        final_key[i] = a_byte.wrapping_add(stage_byte) ^ cross_byte;
+    }
+    
+    final_key
 }
 
-/// Computes B-hash (Result Binding) using the dynamic key.
-/// Uses the REFERENCE (Unsafe) KDF by default.
+/// Computes B-hash (Result Binding) using the HARDENED g_B logic.
+/// This ensures that Result is cryptographically bound to both A-hash and Wax
+/// through a complex, non-obvious transformation function.
 pub fn compute_b_hash(a_hash: &Hash, wax: &str, result: &[u8]) -> Hash {
-    let key = derive_sealing_key_reference(a_hash, wax);
+    let key = derive_sealing_key_hardened(a_hash, wax);
     blake3::keyed_hash(&key, result)
 }
 

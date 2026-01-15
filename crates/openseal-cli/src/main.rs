@@ -7,6 +7,8 @@ use anyhow::{Result, Context, anyhow};
 use std::process::{Command, Stdio};
 use tokio::net::TcpListener;
 use openseal_runtime::run_proxy_server;
+use std::time::{Duration, Instant};
+use std::net::TcpStream;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -45,6 +47,22 @@ enum Commands {
         #[arg(long)]
         cmd: Option<String>,
     }
+}
+
+/// Waits for the given port to become available (app is ready)
+async fn wait_for_port(port: u16, timeout_secs: u64) -> Result<()> {
+    let start = Instant::now();
+    let addr = format!("127.0.0.1:{}", port);
+    println!("   ⏳ Waiting for internal app to bind to port {}...", port);
+    
+    while start.elapsed().as_secs() < timeout_secs {
+        if TcpStream::connect(&addr).is_ok() {
+            println!("   ✅ Internal app is READY (detected in {:?})", start.elapsed());
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    Err(anyhow!("Timeout: Internal app failed to bind to port {} within {}s", port, timeout_secs))
 }
 
 #[tokio::main]
@@ -166,20 +184,22 @@ async fn main() -> Result<()> {
             let program = parts[0];
             let args = &parts[1..];
 
-            println!("   ✨ Spawning Application...");
+            println!("   ✨ Spawning Application (Sanitized Environment)...");
             let mut child = Command::new(program)
                 .args(args)
                 .current_dir(app)
-                .env("PORT", internal_port.to_string()) // Standard PORT env
-                .env("OPENSEAL_PORT", internal_port.to_string()) // Custom one just in case
-                .stdout(Stdio::inherit()) // Relay stdout to parent
+                .env_clear() // 🛡️ Security: Clear all host environment variables
+                .env("PORT", internal_port.to_string())
+                .env("OPENSEAL_PORT", internal_port.to_string())
+                .env("PATH", std::env::var("PATH").unwrap_or_default()) // Essential for finding executables
+                .env("NODE_ENV", std::env::var("NODE_ENV").unwrap_or_else(|_| "production".to_string()))
+                .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .spawn()
                 .context("Failed to spawn application")?;
 
-            // Give it a moment to start (Naive health check)
-            // In production, we should loop-check connection to 127.0.0.1:internal_port
-            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            // Dynamic Port Polling (Security & Reliability)
+            wait_for_port(internal_port, 10).await?;
 
             // 5. Start Runtime Proxy
             // We run this in the current process (tokio main)
