@@ -36,6 +36,8 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
     let mut key_bytes = [0u8; 32];
     csprng.fill_bytes(&mut key_bytes);
     let signing_key = SigningKey::from_bytes(&key_bytes);
+    let verifying_key = signing_key.verifying_key();
+    println!("   🔑 Public Key (Ephemeral): {}", hex::encode(verifying_key.to_bytes()));
 
     let state = Arc::new(AppState {
         target_url,
