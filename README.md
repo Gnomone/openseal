@@ -30,8 +30,9 @@ This project intentionally does **NOT** disclose:
 
 ### 2.2 Specification
 
-* [Public Verification Spec (SPEC_PUBLIC.md)](./docs/public/SPEC_PUBLIC.md)
-* [Architecture (ARCHITECTURE.md)](./docs/public/ARCHITECTURE.md)
+* [5-Minute Quickstart Guide](./docs/public/QUICKSTART.md)
+* [Public Verification Spec](./docs/pending/SPEC_PUBLIC.md)
+* [Architecture](./docs/pending/ARCHITECTURE.md)
 * [Disclosure Policy (OPENSEAL_DISCLOSURE_POLICY.md)](./docs/public/OPENSEAL_DISCLOSURE_POLICY.md)
 
 ---

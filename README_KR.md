@@ -10,8 +10,9 @@ OpenSeal은 API 서버 전체의 로직을 **사건(Event)**으로 박제하고,
 
 ### 2.2 명세 (Specification)
 
-* [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/public/SPEC_PUBLIC_KR.md)
-* [아키텍처 (ARCHITECTURE.md)](./docs/public/ARCHITECTURE_KR.md)
+* [5분 퀵스타트 가이드 (QUICKSTART_KR.md)](./docs/public/QUICKSTART_KR.md)
+* [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/pending/SPEC_PUBLIC_KR.md)
+* [아키텍처 (ARCHITECTURE.md)](./docs/pending/ARCHITECTURE_KR.md)
 
 *   **WASM 탈피**: 네트워크가 가능한 **암호화된 네이티브 런타임** 사용.
 *   **전체 무결성**: 단일 파일이 아닌, **프로젝트 전체 파일(머클트리)**을 봉인 대상으로 확장.
