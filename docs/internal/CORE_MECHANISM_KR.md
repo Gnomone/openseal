@@ -23,9 +23,9 @@ OpenSeal 시스템은 **"소스코드를 보지 않고도 무결성을 확증"**
 
 ---
 
-## 1. 핵심 개념 정의 (Definitions)
+## 1. 핵심 정의 (Definitions)
 
-### 1) A-hash: 소스코드 정체성 (Source Identity)
+### 1) A-hash: 파일 비수정 검사 (File Integrity / Source Identity)
 *   **정의**: 프로젝트의 "정체성(Identity)"을 나타내는 프로젝트 전체의 지문.
 *   **역할**: 코드가 단 1바이트라도 변조되었는지 감지합니다.
 *   **구성**: `MerkleRoot(Project Files + Wax)`. (Wax를 결합하여 블라인드 처리됨)
