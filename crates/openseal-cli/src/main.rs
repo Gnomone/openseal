@@ -44,6 +44,10 @@ enum Commands {
         /// Setup command override (if not using openseal.json)
         #[arg(long)]
         cmd: Option<String>,
+
+        /// Disable signing key generation (Unsafe/unsigned Mode)
+        #[arg(long)]
+        no_key: bool,
     }
 }
 
@@ -126,7 +130,7 @@ async fn main() -> Result<()> {
 
             println!("   ✨ Build Complete! Artifacts in {:?}", output);
         },
-        Commands::Run { app, port, cmd } => {
+        Commands::Run { app, port, cmd, no_key } => {
             println!("🚀 OpenSeal Runner v0.2.0");
             println!("   Bundle: {:?}", app);
 
@@ -187,7 +191,8 @@ async fn main() -> Result<()> {
             let target_url = format!("http://localhost:{}", internal_port);
             
             // Handle Ctrl+C or Proxy Error to kill child
-            let result = run_proxy_server(*port, target_url, app.clone()).await;
+            let use_key = !no_key;
+            let result = run_proxy_server(*port, target_url, app.clone(), use_key).await;
             
             println!("   🛑 Shutting down...");
             let _ = child.kill();

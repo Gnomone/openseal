@@ -28,10 +28,9 @@ The proof object returned by the OpenSeal Runtime.
 
 | Field | Description | Verifiable |
 |:---:|:---|:---:|
-| `a_hash` | **Pre-State ID** | ✅ Public Assertion |
-| `b_hash` | **Post-State ID** | ✅ Public Assertion |
+| `b_hash` | **Post-State ID** (Result Binding) | ✅ Public Assertion |
 | `nonce` | External Identifier for **Uniqueness** | ✅ Public Assertion |
-| `signature` | Digital Signature by OpenSeal Runtime over the above data | ✅ Public Assertion |
+| `signature` | **(Optional)** Digital Signature by OpenSeal Runtime | ✅ Public Assertion |
 
 ### 2.2 Result
 The actual response data (JSON, String, Binary, etc.) returned by the API server. OpenSeal treats this data not as a "value" but as "evidence of a state assertion."
@@ -42,9 +41,10 @@ The actual response data (JSON, String, Binary, etc.) returned by the API server
 
 Callers must perform the following steps to determine validity.
 
-### Step 1: A-hash Verification (Identity Check)
+### Step 1: Identity & Binding Check
 *   **Concept**: "Did this result come from the project I know?"
-*   **Method**: Check if the local source code (or known Merkle Root) matches `Seal.a_hash`.
+*   **Method**: Calculate local `A-hash` from trusted source code. Then, verify that `Seal.b_hash` is consistent with `A-hash`, `Result`, and `Nonce`.
+*   *(Note: `a_hash` is explicitly hidden from the Seal output to prevent leakage. It is implicitly verified via `b_hash` binding.)*
 
 ### Step 2: B-hash Verification (Binding Check)
 *   **Concept**: "Is the result unmanipulated and from this specific execution context (Nonce)?"

@@ -86,8 +86,11 @@ openseal build --source . --output dist --exec "node app.js"
 OpenSeal becomes the **Parent Process**, spawning the application as a child process and isolating it. External access is only possible via the OpenSeal Proxy (8080).
 
 ```bash
-# Run the sealed dist folder (Internal app isolated on random port)
+# Standard Execution (Signed)
 openseal run --app ./dist --port 8080
+
+# Unsigned Mode (Logic Verification Only, No Key)
+openseal run --app ./dist --port 8080 --no-key
 ```
 
 ---

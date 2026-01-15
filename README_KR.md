@@ -70,8 +70,11 @@ openseal build --source . --output dist --exec "node app.js"
 OpenSeal이 **부모 프로세스(Parent)**가 되어 애플리케이션을 자식 프로세스로 실행하고 격리합니다. 외부 접근은 오직 OpenSeal 프록시(8080)를 통해서만 가능합니다.
 
 ```bash
-# 봉인된 dist 폴더를 실행 (내부 앱은 랜덤 포트로 격리됨)
+# 표준 실행 (서명 포함)
 openseal run --app ./dist --port 8080
+
+# 무서명 모드 (로직 검증만 수행, 키 생성 안 함)
+openseal run --app ./dist --port 8080 --no-key
 ```
 
 ---

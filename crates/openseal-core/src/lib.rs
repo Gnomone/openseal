@@ -123,9 +123,8 @@ fn load_mutable_patterns(root: &Path) -> Vec<String> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seal {
     pub nonce: String,      // Hex encoded nonce
-    pub a_hash: String,     // Hex encoded Project Identity Root
     pub b_hash: String,     // Hex encoded Result Binding
-    pub signature: String,  // Hex encoded Ed25519 signature
+    pub signature: Option<String>,  // Hex encoded Ed25519 signature (Optional)
 }
 
 /// Generates the A-hash (Execution Commitment).

@@ -17,10 +17,10 @@ use ed25519_dalek::{SigningKey, Signer};
 struct AppState {
     target_url: String,
     project_identity: ProjectIdentity,
-    signing_key: SigningKey,
+    signing_key: Option<SigningKey>,
 }
 
-pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathBuf) -> anyhow::Result<()> {
+pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathBuf, use_key: bool) -> anyhow::Result<()> {
     println!("🔐 OpenSeal Runtime v0.2.0 Starting...");
     println!("   Target App: {}", target_url);
     println!("   Project Root: {:?}", project_root);
@@ -31,13 +31,19 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
     println!("   ✅ A-hash (Root): {}", identity.root_hash.to_hex());
     println!("   📄 Files Sealed: {}", identity.file_count);
 
-    // Generate a strictly ephemeral signing key for this runtime session
-    let mut csprng = OsRng;
-    let mut key_bytes = [0u8; 32];
-    csprng.fill_bytes(&mut key_bytes);
-    let signing_key = SigningKey::from_bytes(&key_bytes);
-    let verifying_key = signing_key.verifying_key();
-    println!("   🔑 Public Key (Ephemeral): {}", hex::encode(verifying_key.to_bytes()));
+    // Generate a strictly ephemeral signing key for this runtime session IF enabled
+    let signing_key = if use_key {
+        let mut csprng = OsRng;
+        let mut key_bytes = [0u8; 32];
+        csprng.fill_bytes(&mut key_bytes);
+        let key = SigningKey::from_bytes(&key_bytes);
+        let verifying_key = key.verifying_key();
+        println!("   🔑 Public Key (Ephemeral): {}", hex::encode(verifying_key.to_bytes()));
+        Some(key)
+    } else {
+        println!("   ⚠️  Key Generation DISABLED (Unsigned Mode)");
+        None
+    };
 
     let state = Arc::new(AppState {
         target_url,
@@ -105,17 +111,21 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
             let b_hash = compute_b_hash(&a_hash, &nonce_hex, &resp_bytes);
             let b_hash_hex = b_hash.to_hex().to_string();
 
-            // 6. Sign the Seal
+            // 6. Optional Sign the Seal
             // Signature = Sign(Nonce || A || B)
-            let sign_payload = format!("{}{}{}", nonce_hex, a_hash_hex, b_hash_hex);
-            let signature = state.signing_key.sign(sign_payload.as_bytes());
-            let signature_hex = hex::encode(signature.to_bytes());
+            let signature = if let Some(key) = &state.signing_key {
+                 let sign_payload = format!("{}{}{}", nonce_hex, a_hash_hex, b_hash_hex);
+                 let sig = key.sign(sign_payload.as_bytes());
+                 Some(hex::encode(sig.to_bytes()))
+            } else {
+                None
+            };
 
             let seal = Seal {
                 nonce: nonce_hex,
-                a_hash: a_hash_hex,
+                // a_hash is hidden from output as per security requirement
                 b_hash: b_hash_hex,
-                signature: signature_hex,
+                signature,
             };
 
             // 7. Merge & Return (State Transition Response)
