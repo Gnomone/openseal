@@ -26,6 +26,14 @@ This project intentionally does **NOT** disclose:
 
 ---
 
+### 2.2 Specification
+
+* [Public Verification Spec (SPEC_PUBLIC.md)](./docs/public/SPEC_PUBLIC.md)
+* [Architecture (ARCHITECTURE.md)](./docs/public/ARCHITECTURE.md)
+* [Disclosure Policy (OPENSEAL_DISCLOSURE_POLICY.md)](./docs/public/OPENSEAL_DISCLOSURE_POLICY.md)
+
+---
+
 ## 🏗️ Service Architecture (The Flow)
 
 OpenSeal treats the API server as a "Case" (container) and the execution as an "Event" (sealed).

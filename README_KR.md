@@ -10,8 +10,8 @@ OpenSeal은 API 서버 전체의 로직을 **사건(Event)**으로 박제하고,
 
 ### 2.2 명세 (Specification)
 
-* [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/public/SPEC_PUBLIC.md)
-* [아키텍처 (ARCHITECTURE.md)](./docs/public/ARCHITECTURE.md)
+* [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/public/SPEC_PUBLIC_KR.md)
+* [아키텍처 (ARCHITECTURE.md)](./docs/public/ARCHITECTURE_KR.md)
 
 
 *   **WASM 탈피**: 네트워크가 가능한 **암호화된 네이티브 런타임** 사용.
@@ -95,7 +95,7 @@ openseal run --app ./dist --port 8080
 ---
 
 ## 📜 공개 정책 (Disclosure Policy)
-OpenSeal은 오픈소스 프로젝트이지만, 무결성 보호를 위해 일부 구현체(생성 로직 등)는 의도적으로 비공개합니다. 상세 내용은 [공개/비공개 범위 지시문](docs/public/OPENSEAL_DISCLOSURE_POLICY.md)을 참조하십시오.
+OpenSeal은 오픈소스 프로젝트이지만, 무결성 보호를 위해 일부 구현체(생성 로직 등)는 의도적으로 비공개합니다. 상세 내용은 [공개/비공개 범위 지시문](docs/public/OPENSEAL_DISCLOSURE_POLICY_KR.md)을 참조하십시오.
 
 ---
 
