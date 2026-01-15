@@ -91,5 +91,5 @@ OpenSeal applies the same principle in production environments.
 ---
 
 ## 💡 Next Steps
-- [Detailed Security Mechanisms (CORE_MECHANISM_KR.md)](./docs/internal/CORE_MECHANISM_KR.md)
+- [Detailed Security Mechanisms (CORE_MECHANISM_KR.md)](./docs/internal/_CORE_MECHANISM_KR.md)
 - [Production Deployment Guide (Coming Soon)](./docs/production.md)

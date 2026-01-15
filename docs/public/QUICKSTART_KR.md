@@ -91,5 +91,5 @@ OpenSeal은 실제 프로덕션에서도 동일한 원칙을 적용합니다.
 ---
 
 ## 💡 다음 단계
-- [보안 메커니즘 상세 보기 (CORE_MECHANISM_KR.md)](./docs/internal/CORE_MECHANISM_KR.md)
+- [보안 메커니즘 상세 보기 (CORE_MECHANISM_KR.md)](./docs/internal/_CORE_MECHANISM_KR.md)
 - [프로덕션 배포 가이드 (DOCS 가이드 예정)](./docs/production.md)
