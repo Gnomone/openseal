@@ -93,6 +93,7 @@ async fn main() -> Result<()> {
             let walker = WalkBuilder::new(source)
                 .hidden(false)
                 .git_ignore(true)
+                .add_custom_ignore_filename(".opensealignore")
                 .require_git(false)
                 .build();
 

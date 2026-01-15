@@ -22,6 +22,7 @@ pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
     let walker = WalkBuilder::new(root_path)
         .hidden(false)
         .git_ignore(true)
+        .add_custom_ignore_filename(".opensealignore")
         .build();
 
     // Load mutable file patterns from .openseal_mutable if exists
