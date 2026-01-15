@@ -73,6 +73,18 @@ OpenSeal이 **부모 프로세스(Parent)**가 되어 애플리케이션을 자�
 openseal run --app ./dist --port 7325
 ```
 
+```bash
+# 프로젝트 빌드
+cd openseal
+cargo build --release
+
+# 런타임 실행 (개발 모드 - 기본값)
+cargo run --bin openseal -- run ./my-app --port 7325
+
+# 프로덕션 모드 (서명만 반환)
+OPENSEAL_MODE=production cargo run --bin openseal -- run ./my-app --port 7325
+```
+
 ---
 
 ##  보안 모델 및 한계

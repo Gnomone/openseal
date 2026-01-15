@@ -344,4 +344,54 @@ mod tests {
         // Different A-hash should produce different B-hashes
         assert_ne!(b1, b3);
     }
+
+    // SealMode tests
+    mod seal_mode_tests {
+        use super::super::*;
+
+        #[test]
+        fn test_seal_mode_from_env_default() {
+            std::env::remove_var("OPENSEAL_MODE");
+            let mode = SealMode::from_env();
+            assert_eq!(mode, SealMode::Development);
+        }
+
+        #[test]
+        fn test_seal_mode_from_env_production() {
+            std::env::set_var("OPENSEAL_MODE", "production");
+            let mode = SealMode::from_env();
+            assert_eq!(mode, SealMode::Production);
+            std::env::remove_var("OPENSEAL_MODE");
+        }
+
+        #[test]
+        fn test_seal_serialization_full() {
+            let seal = Seal {
+                signature: "abc123".to_string(),
+                wax: Some("wax123".to_string()),
+                pub_key: Some("key123".to_string()),
+                a_hash: Some("ahash123".to_string()),
+                b_hash: Some("bhash123".to_string()),
+            };
+            
+            let json = serde_json::to_string(&seal).unwrap();
+            assert!(json.contains("\"signature\""));
+            assert!(json.contains("\"wax\""));
+        }
+
+        #[test]
+        fn test_seal_serialization_signature_only() {
+            let seal = Seal {
+                signature: "abc123".to_string(),
+                wax: None,
+                pub_key: None,
+                a_hash: None,
+                b_hash: None,
+            };
+            
+            let json = serde_json::to_string(&seal).unwrap();
+            assert!(json.contains("\"signature\""));
+            assert!(!json.contains("\"wax\""));
+        }
+    }
 }
