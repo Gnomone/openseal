@@ -67,14 +67,14 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
 async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl IntoResponse {
     let client = reqwest::Client::new();
     
-    // 2. Dynamic Trajectory: Generate Nonce
-    let mut nonce_bytes = [0u8; 32];
-    OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce_hex = hex::encode(nonce_bytes);
+    // 2. Dynamic Trajectory: Generate Wax (Challenge/Context)
+    let mut wax_bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut wax_bytes);
+    let wax_hex = hex::encode(wax_bytes);
 
     // Prepare A-hash
     // Prepare Blinded A-hash
-    let a_hash = compute_a_hash(&state.project_identity.root_hash, &nonce_hex);
+    let a_hash = compute_a_hash(&state.project_identity.root_hash, &wax_hex);
     let a_hash_hex = a_hash.to_hex().to_string();
 
     // 3. Execution Interception (Call Boundary)
@@ -86,9 +86,9 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
     let method = req.method().clone();
     let mut headers = req.headers().clone();
 
-    // Inject Nonce into headers for the internal app (Transparency)
+    // Inject Wax into headers for the internal app (Transparency)
     // The internal app *can* use this, but OpenSeal enforces the B-hash regardless.
-    headers.insert("X-OpenSeal-Nonce", HeaderValue::from_str(&nonce_hex).unwrap());
+    headers.insert("X-OpenSeal-Wax", HeaderValue::from_str(&wax_hex).unwrap());
 
     // Extract body to forward
     let body_bytes = axum::body::to_bytes(req.into_body(), usize::MAX).await.unwrap_or_default();
@@ -108,18 +108,17 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
             let resp_bytes = resp.bytes().await.unwrap_or_default();
 
             // 5. Atomic Sealing (B-hash generation)
-            // B = b_G(Result, A, Nonce)
-            let b_hash = compute_b_hash(&a_hash, &nonce_hex, &resp_bytes);
+            // B = b_G(Result, A, Wax)
+            let b_hash = compute_b_hash(&a_hash, &wax_hex, &resp_bytes);
             let b_hash_hex = b_hash.to_hex().to_string();
 
             // 6. Optional Sign the Seal
-            // 6. Optional Sign the Seal
-            // Signature = Sign(Nonce || A || B || SHA256(Result))
+            // Signature = Sign(Wax || A || B || SHA256(Result))
             let (signature, pub_key_hex) = if let Some(key) = &state.signing_key {
                  // Calculate Result Hash for binding
                  let result_hash = blake3::hash(&resp_bytes).to_hex().to_string();
                  
-                 let sign_payload = format!("{}{}{}{}", nonce_hex, a_hash_hex, b_hash_hex, result_hash);
+                 let sign_payload = format!("{}{}{}{}", wax_hex, a_hash_hex, b_hash_hex, result_hash);
                  let sig = key.sign(sign_payload.as_bytes());
                  let pub_key = hex::encode(key.verifying_key().to_bytes());
                  
@@ -129,7 +128,7 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
             };
 
             let seal = Seal {
-                nonce: nonce_hex,
+                wax: wax_hex,
                 pub_key: pub_key_hex,
                 a_hash: a_hash_hex,
                 b_hash: b_hash_hex,

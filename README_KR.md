@@ -41,8 +41,8 @@ sequenceDiagram
     participant Event as OpenSeal 런타임 (사건)
     participant HS as HighStation (서버)
 
-    Client->>Case: 1. 서비스 요청 (Nonce 포함)
-    Case->>Event: 2. 실행 요청 (Raw Input + Nonce)
+    Client->>Case: 1. 서비스 요청 (Wax 포함)
+    Case->>Event: 2. 실행 요청 (Raw Input + Wax)
     
     Note over Event: [원자적 파이프라인]
     Event->>Event: ① 프로젝트 머클트리 기반 A-hash 생성

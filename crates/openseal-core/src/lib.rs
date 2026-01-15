@@ -122,42 +122,42 @@ fn load_mutable_patterns(root: &Path) -> Vec<String> {
 /// The complete seal structure returned to the outside world.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seal {
-    pub nonce: String,      // Hex encoded nonce
+    pub wax: String,        // Hex encoded Wax (Challenge Context)
     pub pub_key: String,    // Hex encoded Ephemeral Public Key (New)
-    pub a_hash: String,     // Hex encoded Blinded Identity (Project + Nonce)
+    pub a_hash: String,     // Hex encoded Blinded Identity (Project + Wax)
     pub b_hash: String,     // Hex encoded Result Binding
     pub signature: Option<String>,  // Hex encoded Ed25519 signature
 }
 
 /// Generates the Blinded A-hash (Execution Commitment).
-/// A = Hash(ProjectRoot || Nonce)
+/// A = Hash(ProjectRoot || Wax)
 /// This binds the static identity to the dynamic request, and hides the raw Root Hash.
-pub fn compute_a_hash(project_root: &Hash, nonce: &str) -> Hash {
+pub fn compute_a_hash(project_root: &Hash, wax: &str) -> Hash {
     let mut hasher = blake3::Hasher::new();
     hasher.update(b"OPENSEAL_BLINDED_IDENTITY");
     hasher.update(project_root.as_bytes());
-    hasher.update(nonce.as_bytes());
+    hasher.update(wax.as_bytes());
     hasher.finalize()
 }
 
 /// [REFERENCE IMPLEMENTATION]
-/// Derives the dynamic sealing key (b_G function definition) from A-hash and Nonce.
+/// Derives the dynamic sealing key (b_G function definition) from A-hash and Wax.
 /// WARNING: This is a public reference implementation. 
 /// Production environments MUST replace this with a private, obfuscated KDF library.
-fn derive_sealing_key_reference(a_hash: &Hash, nonce: &str) -> [u8; 32] {
+fn derive_sealing_key_reference(a_hash: &Hash, wax: &str) -> [u8; 32] {
     // Log warning only effectively once/rarely to avoid spam, or reliance on doc
     // epistemic warning: "This logic is public"
     let mut hasher = blake3::Hasher::new();
     hasher.update(b"OPENSEAL_BG_REFERENCE_IMPL_UNSAFE"); // Changed salt to clearly indicate unsafe
     hasher.update(a_hash.as_bytes());
-    hasher.update(nonce.as_bytes());
+    hasher.update(wax.as_bytes());
     hasher.finalize().into()
 }
 
 /// Computes B-hash (Result Binding) using the dynamic key.
 /// Uses the REFERENCE (Unsafe) KDF by default.
-pub fn compute_b_hash(a_hash: &Hash, nonce: &str, result: &[u8]) -> Hash {
-    let key = derive_sealing_key_reference(a_hash, nonce);
+pub fn compute_b_hash(a_hash: &Hash, wax: &str, result: &[u8]) -> Hash {
+    let key = derive_sealing_key_reference(a_hash, wax);
     blake3::keyed_hash(&key, result)
 }
 

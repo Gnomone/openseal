@@ -27,9 +27,9 @@ OpenSeal 런타임이 반환하는 증명 객체입니다.
 | 필드 | 설명 | 검증 가능 여부 |
 |:---:|:---|:---:|
 | `pub_key` | **실행자 정체성** (일회용 세션 공개키) | ✅ Public Assertion |
-| `a_hash` | **블라인드된 사전 상태값** (프로젝트 + Nonce) | ✅ Public Assertion |
+| `a_hash` | **블라인드된 사전 상태값** (프로젝트 + Wax) | ✅ Public Assertion |
 | `b_hash` | **사후 상태 식별자 (Post-State ID)** | ✅ Public Assertion |
-| `nonce` | 실행의 **유일성(Uniqueness)**을 보장하기 위한 외부 식별자 | ✅ Public Assertion |
+| `wax` | **챌린지 문맥** (유일성 & 검증용) | ✅ Public Assertion |
 | `signature` | **(선택사항)** 위 데이터들에 대한 OpenSeal 런타임의 전자서명 | ✅ Public Assertion |
 
 ### 2.2 결과 (Result)

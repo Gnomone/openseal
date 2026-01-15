@@ -47,8 +47,8 @@ sequenceDiagram
     participant Event as OpenSeal Runtime (Event)
     participant HS as HighStation (Server)
 
-    Client->>Case: 1. Service Request (inc. Nonce)
-    Case->>Event: 2. Execution Request (Raw Input + Nonce)
+    Client->>Case: 1. Service Request (inc. Wax)
+    Case->>Event: 2. Execution Request (Raw Input + Wax)
     
     Note over Event: [Atomic Pipeline]
     Event->>Event: ① Merkle Root based A-hash generation
