@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/openseal-core",
+    "crates/openseal-runtime",
+    "crates/openseal-cli",
+]
+
+[workspace.dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+blake3 = { version = "1.5", features = ["rayon", "mmap", "serde"] }
+ed25519-dalek = "2.1"
+hex = "0.4"
+tokio = { version = "1.0", features = ["full"] }
+rayon = "1.8"
+walkdir = "2.4"
+ignore = "0.4"
+thiserror = "1.0"
+axum = "0.7"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+clap = { version = "4.4", features = ["derive"] }
+rand = "0.8"
