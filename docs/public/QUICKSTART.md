@@ -6,6 +6,23 @@ This guide walks you through using OpenSeal to protect your API services and dem
 
 ## 🚀 Step-by-Step Tutorial
 
+### Step 0: Install OpenSeal CLI
+To use OpenSeal commands anywhere, you first need to build and install the CLI to your system path.
+
+```bash
+# Navigate to the OpenSeal repository
+cd /root/highpass/openseal
+
+# Build and install the CLI globally
+cargo install --path ./crates/openseal-cli
+
+# Verify installation
+openseal --version
+```
+
+> [!NOTE]
+> After `cargo install` completes, you can use the `openseal` command directly in any directory.
+
 ### Step 1: Prepare Sample Project
 Prepare the **Sentence Laundry** API project (also known as Messy Talker) for testing. This project provides a "washing" service that translates text through multiple languages.
 
@@ -91,5 +108,5 @@ OpenSeal applies the same principle in production environments.
 ---
 
 ## 💡 Next Steps
-- [Detailed Security Mechanisms (CORE_MECHANISM_KR.md)](./docs/internal/_CORE_MECHANISM_KR.md)
-- [Production Deployment Guide (Coming Soon)](./docs/production.md)
+- [Project Architecture Overview (ARCHITECTURE.md)](./ARCHITECTURE.md)
+- [Public Technical Specifications (SPEC_PUBLIC.md)](./SPEC_PUBLIC.md)

@@ -6,6 +6,23 @@
 
 ## 🚀 단계별 튜토리얼
 
+### 0단계: OpenSeal CLI 설치
+OpenSeal 명령어를 어디서나 사용하려면 먼저 CLI를 빌드하여 시스템 경로에 등록해야 합니다.
+
+```bash
+# OpenSeal 레포지토리로 이동
+cd /root/highpass/openseal
+
+# CLI 빌드 및 설치 (전역 환경)
+cargo install --path ./crates/openseal-cli
+
+# 설치 확인
+openseal --version
+```
+
+> [!NOTE]
+> `cargo install`이 완료되면 `openseal` 명령어를 모든 디렉토리에서 바로 사용할 수 있습니다.
+
 ### 1단계: 샘플 프로젝트 준비
 테스트를 위해 **문장세탁기 (Sentence Laundry)** API 프로젝트를 준비합니다. 이 프로젝트는 입력을 여러 언어로 번역하여 문장을 "세탁"하는 기능을 제공합니다.
 
@@ -91,5 +108,5 @@ OpenSeal은 실제 프로덕션에서도 동일한 원칙을 적용합니다.
 ---
 
 ## 💡 다음 단계
-- [보안 메커니즘 상세 보기 (CORE_MECHANISM_KR.md)](./docs/internal/_CORE_MECHANISM_KR.md)
-- [프로덕션 배포 가이드 (DOCS 가이드 예정)](./docs/production.md)
+- [프로젝트 아키텍처 개요 (ARCHITECTURE_KR.md)](./ARCHITECTURE_KR.md)
+- [공개 기술 명세 (SPEC_PUBLIC_KR.md)](./SPEC_PUBLIC_KR.md)
