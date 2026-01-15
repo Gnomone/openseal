@@ -50,6 +50,7 @@ pip install -r requirements.txt
 
 ```bash
 # OpenSeal로 빌드 (소스코드 무결성 지문 추출 및 패키징)
+# --exec: 서비스 실행을 위한 엔트리포인트 명령어를 지정합니다. (여기선 main.py 실행)
 openseal build --source . --output ./dist --exec "python3 main.py"
 ```
 

@@ -50,6 +50,7 @@ Use the `openseal build` command to seal the entire source code with a Merkle Tr
 
 ```bash
 # Build with OpenSeal (Extract source integrity fingerprint & Package)
+# --exec: Specifies the entry point command to start the service (executing main.py here).
 openseal build --source . --output ./dist --exec "python3 main.py"
 ```
 
