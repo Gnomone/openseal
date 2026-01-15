@@ -16,6 +16,8 @@ To overcome the network limitations of WASM and prevent orchestration tampering,
 *   **Full Integrity**: Seals the entire project (via Merkle Tree) instead of a single file.
 *   **Caller Monopoly**: Replaces the execution caller to capture results as state transitions.
 
+> 📖 **[Read the Whitepaper](./docs/public/WHITEPAPER.md)**: Understanding the "Trust of Execution" Model.
+
 ### 🛡️ Security Disclosure Note
 This project intentionally does **NOT** disclose:
 - How valid seals are generated.
