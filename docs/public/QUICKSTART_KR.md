@@ -66,6 +66,10 @@ openseal build --source . --output ./dist --exec "python3 main.py"
 openseal run --app ./dist --port 7325
 ```
 
+> [!IMPORTANT]
+> **포트 자동 할당 및 환경 변수**  
+> OpenSeal은 보안을 위해 내부 애플리케이션에 랜덤 포트(Hidden Internal Port)를 할당합니다. 따라서 보호 대상 애플리케이션은 반드시 `PORT` 환경 변수를 읽어 해당 포트에서 대기하도록 구현되어야 합니다. (예: Python의 `int(os.environ.get("PORT", 8001))` )
+
 ### 4단계: 정상 상태 확인
 API를 호출하여 응답과 함께 오는 **왁스(Wax)** 시그니처를 확인합니다.
 

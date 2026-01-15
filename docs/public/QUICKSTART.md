@@ -66,6 +66,10 @@ Execute your service within the OpenSeal protective layer. The runtime runs the 
 openseal run --app ./dist --port 7325
 ```
 
+> [!IMPORTANT]
+> **Dynamic Port Allocation & Environment Variables**  
+> For security reasons, OpenSeal assigns a random "Hidden Internal Port" to the application. Therefore, the target application **must** be configured to listen on the port specified by the `PORT` environment variable. (e.g., `int(os.environ.get("PORT", 8001))` in Python)
+
 ### Step 4: Verify Normal Operation
 Call the API and check the **Wax** signature included in the response.
 
