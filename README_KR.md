@@ -13,7 +13,6 @@ OpenSeal은 API 서버 전체의 로직을 **사건(Event)**으로 박제하고,
 * [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/public/SPEC_PUBLIC_KR.md)
 * [아키텍처 (ARCHITECTURE.md)](./docs/public/ARCHITECTURE_KR.md)
 
- ㅁㅁ   
 *   **WASM 탈피**: 네트워크가 가능한 **암호화된 네이티브 런타임** 사용.
 *   **전체 무결성**: 단일 파일이 아닌, **프로젝트 전체 파일(머클트리)**을 봉인 대상으로 확장.
 *   **내장형 봉인 (Internalized)**: 난수 수령 및 봉인 생성 로직을 프로그램 내부에 강제 주입.
