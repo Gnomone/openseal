@@ -11,7 +11,7 @@ OpenSeal 명령어를 어디서나 사용하려면 먼저 CLI를 빌드하여 �
 
 ```bash
 # OpenSeal 레포지토리 클론 (또는 이미 있다면 해당 디렉토리로 이동)
-git clone https://github.com/highstation/openseal
+git clone https://github.com/kjyyoung/openseal
 cd openseal
 
 # CLI 빌드 및 설치 (프로젝트 루트에서 실행)
@@ -29,7 +29,7 @@ openseal --version
 
 ```bash
 # 샘플 레포지토리 클론 및 이동
-git clone https://github.com/highstation/sentence-laundry
+git clone https://github.com/kjyyoung/sentence-laundry
 cd sentence-laundry
 
 # 가상 환경 활성화 (Python 프로젝트 권장 사항)

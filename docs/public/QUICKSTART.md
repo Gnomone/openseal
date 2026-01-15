@@ -11,7 +11,7 @@ To use OpenSeal commands anywhere, you first need to build and install the CLI t
 
 ```bash
 # Clone the OpenSeal repository (or navigate to it if already cloned)
-git clone https://github.com/highstation/openseal
+git clone https://github.com/kjyyoung/openseal
 cd openseal
 
 # Build and install the CLI (Run from the project root)
@@ -29,7 +29,7 @@ Prepare the **Sentence Laundry** API project (also known as Messy Talker) for te
 
 ```bash
 # Clone the sample repository and navigate to it
-git clone https://github.com/highstation/sentence-laundry
+git clone https://github.com/kjyyoung/sentence-laundry
 cd sentence-laundry
 
 # Activate virtual environment (Recommended for Python)
