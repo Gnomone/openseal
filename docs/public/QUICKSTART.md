@@ -11,7 +11,7 @@ Prepare the **Sentence Laundry** API project (also known as Messy Talker) for te
 
 ```bash
 # Navigate to the project directory
-cd /root/highpass/sentence-laundry
+cd /root/sentence-laundry
 
 # Install dependencies
 pip install -r requirements.txt

@@ -11,7 +11,7 @@
 
 ```bash
 # 프로젝트 디렉토리로 이동
-cd /root/highpass/sentence-laundry
+cd /root/sentence-laundry
 
 # 의존성 설치 (이미 설치되어 있을 수 있습니다)
 pip install -r requirements.txt
