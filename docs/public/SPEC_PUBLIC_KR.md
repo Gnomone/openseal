@@ -52,6 +52,7 @@ OpenSeal 런타임이 반환하는 증명 객체입니다.
 ### Step 3: 서명 검증 (Authenticity Check)
 *   **개념**: "이 봉인이 신뢰할 수 있는 OpenSeal 런타임에 의해 서명되었는가?"
 *   **방법**: `Seal.signature`가 `Seal` 데이터 내용에 대해 유효한지 검증합니다.
+*   **키 수명주기 (Security)**: 서명 키(`Pub-Key`)는 런타임 시작 시 메모리(RAM)에서만 생성되는 **일회성 세션 키(Ephemeral Session Key)**입니다. 디스크에 영구 **저장되지 않으며**, 런타임을 재시작하면 키가 변경되어 이전 키의 유출이 미래의 보안을 위협하지 않습니다(Forward Secrecy).
 
 ---
 

@@ -54,6 +54,7 @@ Callers must perform the following steps to determine validity.
 ### Step 3: Signature Verification (Authenticity Check)
 *   **Concept**: "Is this seal signed by a trusted OpenSeal Runtime?"
 *   **Method**: Verify `Seal.signature` against the `Seal` content.
+*   **Key Lifecycle (Security)**: The signing key (`Pub-Key`) is an **Ephemeral Session Key** generated in RAM at runtime startup. It is **never persisted** to disk. Restarting the runtime creates a new identity, ensuring Forward Secrecy.
 
 ---
 
