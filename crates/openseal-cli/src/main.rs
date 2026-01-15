@@ -208,7 +208,6 @@ async fn main() -> Result<()> {
             // 5. Start Runtime Proxy
             // We run this in the current process (tokio main)
             // If runtime proxy dies, we kill child.
-            let target_url = format!("http://localhost:{}", internal_port);
             
             // Handle Ctrl+C or Proxy Error to kill child
             let result = run_proxy_server(*port, target_url, app.clone()).await;
@@ -237,3 +236,4 @@ fn ensure_config_files(source: &Path) -> Result<()> {
     }
     Ok(())
 }
+            let target_url = format!("http://127.0.0.1:{}", internal_port);

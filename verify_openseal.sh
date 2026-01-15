@@ -62,7 +62,7 @@ sleep 5 # Wait for node to start
 # 6. Test Request
 echo "----------------------------------------"
 echo "📨 Sending Request to OpenSeal Child Runner..."
-RESPONSE=$(curl -s "http://localhost:8081/api.json")
+RESPONSE=$(curl -s "http://127.0.0.1:8081/api.json")
 
 echo "📥 Received Response (Raw):"
 echo "$RESPONSE"

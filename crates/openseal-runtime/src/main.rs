@@ -9,8 +9,8 @@ struct Args {
     #[arg(short, long, default_value = "7325")]
     port: u16,
 
-    /// Target URL of the internal application to wrap (e.g., http://localhost:8000)
-    #[arg(long, default_value = "http://localhost:8000")]
+    /// Target URL of the internal application to wrap (e.g., http://127.0.0.1:8000)
+    #[arg(long, default_value = "http://127.0.0.1:8000")]
     target: String,
 
     /// Path to the project root to seal (Identity source)

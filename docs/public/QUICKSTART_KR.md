@@ -46,7 +46,7 @@ openseal run ./nodejs-example --port 7325
 API를 호출하여 응답과 함께 오는 서명이 골든 트루스와 일치하는지 확인합니다.
 
 ```bash
-curl -X POST http://localhost:7325/greet \
+curl -X POST http://127.0.0.1:7325/greet \
   -H "X-OpenSeal-Wax: my_first_test_123" \
   -H "Content-Type: application/json" \
   -d '{"name": "OpenSeal"}'

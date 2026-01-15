@@ -46,7 +46,7 @@ openseal run ./nodejs-example --port 7325
 Call the API and confirm that the signature accompanying the response matches the Golden Truth.
 
 ```bash
-curl -X POST http://localhost:7325/greet \
+curl -X POST http://127.0.0.1:7325/greet \
   -H "X-OpenSeal-Wax: my_first_test_123" \
   -H "Content-Type: application/json" \
   -d '{"name": "OpenSeal"}'
