@@ -57,7 +57,23 @@ sequenceDiagram
 
 ---
 
+## 3. 봉인 설정 및 제외 규칙 (Exclusion Rules)
 
+OpenSeal은 머클 트리 생성 시 다음과 같은 규칙으로 파일 포함 여부를 결정합니다.
+
+### 3.1 완전 제외 (Total Exclusion)
+다음 파일들은 A-hash 연산에서 완전히 제외되며, 빌드 결과물에도 포함되지 않습니다.
+*   **`.gitignore`**: 표준 Git 제외 규칙을 준수합니다.
+*   **`.opensealignore`**: OpenSeal 전용 제외 규칙입니다. Git에는 포함하고 싶지만 OpenSeal 봉인 대상에서는 빼고 싶은 파일(예: 로직과 무관한 문서, 설정 등)을 정의할 때 사용합니다.
+
+### 3.2 내용 무시 (Content Exclusion - Mutable Files)
+파일의 **존재(구조)**는 봉인하되 **내용(Content)**의 변화는 허용하고 싶을 때 사용합니다. (예: 로컬 데이터베이스, 로그 파일 등)
+*   **`.openseal_mutable`**: 이 파일에 기록된 패턴(예: `*.db`, `logs/`)에 매치되는 파일은 내용이 바뀌어도 A-hash가 유지됩니다. 
+*   **보안**: 실행 중인 중요 코드 파일(`.js`, `.py`, `.rs` 등)을 mutable로 설정하는 것은 보안 상의 이유로 금지됩니다. (런타임에서 거부됨)
+
+---
+
+## 4. 설치 및 실행 (Setup & Run)
 
 ### 1. 프로젝트 봉인 (`openseal build`)
 프로젝트 소스코드를 스캔하여 정체성(Identity)을 확정하고, 실행 명령(`--exec`)을 포함하여 패키징합니다.
