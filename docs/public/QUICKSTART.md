@@ -13,9 +13,16 @@ Prepare the **Sentence Laundry** API project (also known as Messy Talker) for te
 # Navigate to the project directory
 cd /root/sentence-laundry
 
+# Activate virtual environment (Recommended for Python)
+source venv/bin/activate
+
 # Install dependencies
 pip install -r requirements.txt
 ```
+
+> [!TIP]
+> **Why activate the virtual environment (venv)?**  
+> It isolates dependencies from the system to prevent conflicts. OpenSeal automatically excludes the `venv/` folder from integrity checks via `.opensealignore`, ensuring that only the pure source code identity (A-hash) is captured.
 
 ### Step 2: Seal the Project
 Use the `openseal build` command to seal the entire source code with a Merkle Tree and prepare the executable.

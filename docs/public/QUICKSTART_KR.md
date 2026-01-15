@@ -13,9 +13,16 @@
 # 프로젝트 디렉토리로 이동
 cd /root/sentence-laundry
 
-# 의존성 설치 (이미 설치되어 있을 수 있습니다)
+# 가상 환경 활성화 (Python 프로젝트 권장 사항)
+source venv/bin/activate
+
+# 의존성 설치
 pip install -r requirements.txt
 ```
+
+> [!TIP]
+> **왜 가상 환경(venv)을 활성화하나요?**  
+> 시스템 환경과 분리하여 의존성 충돌을 방지하기 위함입니다. OpenSeal은 `.opensealignore` 규칙을 통해 가상 환경 폴더(`venv/`)를 무결성 검사에서 자동으로 제외하므로, 순수 소스코드의 정체성(A-hash)만 정확히 추출할 수 있습니다.
 
 ### 2단계: 프로젝트 봉인 (Sealing)
 `openseal build` 명령어를 사용하여 전체 소스코드를 머클 트리로 봉인하고 실행 파일을 준비합니다.
