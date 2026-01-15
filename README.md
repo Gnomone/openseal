@@ -119,8 +119,8 @@ openseal run --app ./dist --port 7325
 ## 🔒 Security Model
 
 ### What it Protects
-*   **Source Code Tampering**: Modifying even 1 byte of code or environment before execution will cause sealing authentication to fail.
-*   **Result Manipulation**: Mathematically guarantees that the result was honestly produced by that specific source code. (Result-Code Binding)
+*   **Code/Environment Tampering**: Modifying even 1 byte of code or environment before/during the **File Integrity Check** will cause sealing authentication to fail.
+*   **Result Manipulation**: Mathematically guarantees that the result was generated honestly through the specified source code (Result-Code Binding).
 
 ### Limitations (The ROOT Problem)
 A ROOT-level attacker with real-time measurement can theoretically tamper with memory. However, OpenSeal is designed such that **"the cost of forgery is greater than or equal to the cost of honest execution,"** achieving economic integrity.
