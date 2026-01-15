@@ -31,6 +31,7 @@ This project intentionally does **NOT** disclose:
 ### 2.2 Specification
 
 * [5-Minute Quickstart Guide](./docs/public/QUICKSTART.md)
+* [7325 Protocol Spec (OSIP-7325.md)](./docs/public/OSIP-7325.md)
 * [Public Verification Spec](./docs/pending/SPEC_PUBLIC.md)
 * [Architecture](./docs/pending/ARCHITECTURE.md)
 * [Disclosure Policy (OPENSEAL_DISCLOSURE_POLICY.md)](./docs/public/OPENSEAL_DISCLOSURE_POLICY.md)

@@ -11,6 +11,7 @@ OpenSeal은 API 서버 전체의 로직을 **사건(Event)**으로 박제하고,
 ### 2.2 명세 (Specification)
 
 * [5분 퀵스타트 가이드 (QUICKSTART_KR.md)](./docs/public/QUICKSTART_KR.md)
+* [7325 프로토콜 규격 (OSIP-7325_KR.md)](./docs/public/OSIP-7325_KR.md)
 * [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/pending/SPEC_PUBLIC_KR.md)
 * [아키텍처 (ARCHITECTURE.md)](./docs/pending/ARCHITECTURE_KR.md)
 
