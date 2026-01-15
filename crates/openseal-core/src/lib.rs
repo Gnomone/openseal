@@ -123,16 +123,21 @@ fn load_mutable_patterns(root: &Path) -> Vec<String> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seal {
     pub nonce: String,      // Hex encoded nonce
+    pub pub_key: String,    // Hex encoded Ephemeral Public Key (New)
+    pub a_hash: String,     // Hex encoded Blinded Identity (Project + Nonce)
     pub b_hash: String,     // Hex encoded Result Binding
-    pub signature: Option<String>,  // Hex encoded Ed25519 signature (Optional)
+    pub signature: Option<String>,  // Hex encoded Ed25519 signature
 }
 
-/// Generates the A-hash (Execution Commitment).
-/// In v2.0, A-hash is primarily the ProjectIdentity Root, but can include execution context.
-/// For simplicity in the prototype, A = ProjectRoot.
-pub fn compute_a_hash(project_root: &Hash) -> Hash {
-    // In future, A = Hash(ProjectRoot || EnvVars || Context)
-    *project_root
+/// Generates the Blinded A-hash (Execution Commitment).
+/// A = Hash(ProjectRoot || Nonce)
+/// This binds the static identity to the dynamic request, and hides the raw Root Hash.
+pub fn compute_a_hash(project_root: &Hash, nonce: &str) -> Hash {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"OPENSEAL_BLINDED_IDENTITY");
+    hasher.update(project_root.as_bytes());
+    hasher.update(nonce.as_bytes());
+    hasher.finalize()
 }
 
 /// [REFERENCE IMPLEMENTATION]

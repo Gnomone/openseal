@@ -28,6 +28,8 @@ The proof object returned by the OpenSeal Runtime.
 
 | Field | Description | Verifiable |
 |:---:|:---|:---:|
+| `pub_key` | **Runtime Identity** (Ephemeral Public Key) | ✅ Public Assertion |
+| `a_hash` | **Blinded Pre-State ID** (Project + Nonce) | ✅ Public Assertion |
 | `b_hash` | **Post-State ID** (Result Binding) | ✅ Public Assertion |
 | `nonce` | External Identifier for **Uniqueness** | ✅ Public Assertion |
 | `signature` | **(Optional)** Digital Signature by OpenSeal Runtime | ✅ Public Assertion |

@@ -73,7 +73,8 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
     let nonce_hex = hex::encode(nonce_bytes);
 
     // Prepare A-hash
-    let a_hash = compute_a_hash(&state.project_identity.root_hash);
+    // Prepare Blinded A-hash
+    let a_hash = compute_a_hash(&state.project_identity.root_hash, &nonce_hex);
     let a_hash_hex = a_hash.to_hex().to_string();
 
     // 3. Execution Interception (Call Boundary)
@@ -112,18 +113,25 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
             let b_hash_hex = b_hash.to_hex().to_string();
 
             // 6. Optional Sign the Seal
-            // Signature = Sign(Nonce || A || B)
-            let signature = if let Some(key) = &state.signing_key {
-                 let sign_payload = format!("{}{}{}", nonce_hex, a_hash_hex, b_hash_hex);
+            // 6. Optional Sign the Seal
+            // Signature = Sign(Nonce || A || B || SHA256(Result))
+            let (signature, pub_key_hex) = if let Some(key) = &state.signing_key {
+                 // Calculate Result Hash for binding
+                 let result_hash = blake3::hash(&resp_bytes).to_hex().to_string();
+                 
+                 let sign_payload = format!("{}{}{}{}", nonce_hex, a_hash_hex, b_hash_hex, result_hash);
                  let sig = key.sign(sign_payload.as_bytes());
-                 Some(hex::encode(sig.to_bytes()))
+                 let pub_key = hex::encode(key.verifying_key().to_bytes());
+                 
+                 (Some(hex::encode(sig.to_bytes())), pub_key)
             } else {
-                None
+                (None, String::from("UNSIGNED_MODE"))
             };
 
             let seal = Seal {
                 nonce: nonce_hex,
-                // a_hash is hidden from output as per security requirement
+                pub_key: pub_key_hex,
+                a_hash: a_hash_hex,
                 b_hash: b_hash_hex,
                 signature,
             };
@@ -138,7 +146,7 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
                 "result": result_json,
                 "openseal": seal
             });
-
+            
             (StatusCode::OK, axum::Json(final_response)).into_response()
         }
         Err(e) => {
