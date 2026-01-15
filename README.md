@@ -73,17 +73,19 @@ sequenceDiagram
 ## 🛠️ Usage (Vision)
 
 ### 1. Sealing a Project (`openseal build`)
-Run this in your project root to scan all source code and package it into a hardened runtime.
+Scan the source code to determine Identity, and package it including the execution command (`--exec`).
 
 ```bash
-openseal build --entry app.js --output project.sealed
+# Node.js project example
+openseal build --source . --output dist --exec "node app.js"
 ```
 
 ### 2. Running a Sealed Service (`openseal run`)
-The operator cannot modify source code; they can only run the hardened binary.
+OpenSeal becomes the **Parent Process**, spawning the application as a child process and isolating it. External access is only possible via the OpenSeal Proxy (8080).
 
 ```bash
-openseal run --app project.sealed --port 8080
+# Run the sealed dist folder (Internal app isolated on random port)
+openseal run --app ./dist --port 8080
 ```
 
 ---
