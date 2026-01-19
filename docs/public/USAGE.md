@@ -25,6 +25,19 @@ openseal build --exec "node app.js"
 openseal run --port 3000
 ```
 
+### Step 4: Verify (Optional - For Testing)
+```bash
+# Verify the integrity of an API response
+openseal verify --response result.json --wax "your-nonce-value" --root-hash "expected-a-hash"
+```
+
+**When to use `verify`:**
+- Testing your sealed application locally before deployment
+- Auditing API responses to ensure they contain valid Seals
+- Debugging Seal generation issues
+
+**Note**: In production, verification is typically done by the client (consumer) using the open-source verifier, not by the provider.
+
 ---
 
 ## 2. Safety Guardrails

@@ -23,6 +23,19 @@ openseal build --exec "node app.js"
 openseal run --port 3000
 ```
 
+### 4단계: 검증 (선택사항 - 테스트용)
+```bash
+# API 응답의 무결성을 검증합니다.
+openseal verify --response result.json --wax "난수값" --root-hash "예상-A-hash"
+```
+
+**`verify` 명령어를 사용하는 경우:**
+- 배포 전 로컬에서 봉인된 애플리케이션 테스트
+- API 응답에 유효한 인감(Seal)이 포함되어 있는지 감사
+- 인감 생성 문제 디버깅
+
+**참고**: 프로덕션 환경에서는 공급자가 아닌 클라이언트(소비자)가 오픈소스 검증기를 사용하여 검증합니다.
+
 ---
 
 ## 2. 안전 가드레일 (Safety Guardrails)
