@@ -16,4 +16,4 @@ rand = { workspace = true }
 hex = { workspace = true }
 blake3 = { workspace = true }
 ed25519-dalek = { workspace = true }
-openseal-secret = { path = "../openseal-secret" }
+# openseal-secret = { path = "../openseal-secret" }

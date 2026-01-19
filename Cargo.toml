@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "crates/openseal-core",
     "crates/openseal-runtime",
-    "crates/openseal-cli", "crates/openseal-secret",
+    "crates/openseal-cli",
 ]
 
 [workspace.dependencies]
