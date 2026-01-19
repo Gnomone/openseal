@@ -1,0 +1,17 @@
+[package]
+name = "openseal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { workspace = true }
+anyhow = { workspace = true }
+openseal-core = { path = "../openseal-core" }
+ignore = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+blake3 = { workspace = true }
+openseal-runtime = { path = "../openseal-runtime" }
+tokio = { workspace = true, features = ["full"] }
+chrono = "0.4"
+hex = { workspace = true }

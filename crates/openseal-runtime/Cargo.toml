@@ -1,0 +1,19 @@
+[package]
+name = "openseal-runtime"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+openseal-core = { path = "../openseal-core" }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
+blake3 = { workspace = true }
+ed25519-dalek = { workspace = true }
+openseal-secret = { path = "../openseal-secret" }
