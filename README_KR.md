@@ -52,6 +52,6 @@ OpenSeal의 인감 생성 엔진은 '보호된 런타임' 형태로 배포됩니
 ---
 
 ## 📖 더 알아보기
-* [프로토콜 규격 (OSIP-7325)](./docs/public/OSIP-7325_KR.md)
-* [보안 모델 및 방어](./docs/public/SECURITY_MODEL_KR.md)
-* [5분 퀵스타트 가이드](./docs/public/QUICKSTART_KR.md)
+* [프로토콜 규격 (PROTOCOL)](./docs/public/PROTOCOL_KR.md)
+* [보안 정책 및 전략 (POLICY)](./docs/public/POLICY_KR.md)
+* [사용 가이드 (USAGE)](./docs/public/USAGE_KR.md)

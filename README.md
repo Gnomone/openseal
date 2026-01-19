@@ -51,6 +51,6 @@ This mirrors industry-standard designs used in Secure Enclaves (TEE), HSM-backed
 ---
 
 ## 📖 Learn More
-* [Protocol Specification (OSIP-7325)](./docs/public/OSIP-7325.md)
-* [Security Model & Threat Defense](./docs/public/SECURITY_MODEL.md)
-* [5-Minute Quickstart Guide](./docs/public/QUICKSTART.md)
+* [Protocol Specification (PROTOCOL)](./docs/public/PROTOCOL.md)
+* [Security Policy & Strategy (POLICY)](./docs/public/POLICY.md)
+* [Usage Guide (USAGE)](./docs/public/USAGE.md)
