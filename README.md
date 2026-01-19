@@ -100,7 +100,12 @@ Used when you want to seal the **existence (structure)** of a file but allow its
 You can install the OpenSeal CLI immediately using `cargo` if you have the Rust environment set up.
 
 ```bash
-cargo install --git https://github.com/kjyyoung/OpenSeal.git --bin openseal
+# Option 1: Direct install from GitHub
+cargo install --git https://github.com/kjyyoung/openseal.git --bin openseal
+
+# Option 2: Install from local clone
+cd openseal
+cargo install --path ./crates/openseal-cli
 ```
 
 ### 1. Sealing a Project (`openseal build`)

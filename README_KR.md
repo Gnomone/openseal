@@ -83,7 +83,12 @@ OpenSeal은 머클 트리 생성 시 다음과 같은 규칙으로 파일 포함
 Rust가 설치된 환경에서 아래 명령어로 OpenSeal CLI를 즉시 설치할 수 있습니다.
 
 ```bash
-cargo install --git https://github.com/kjyyoung/OpenSeal.git --bin openseal
+# 방법 1: GitHub에서 직접 설치
+cargo install --git https://github.com/kjyyoung/openseal.git --bin openseal
+
+# 방법 2: 로컬 클론 후 설치
+cd openseal
+cargo install --path ./crates/openseal-cli
 ```
 
 ### 1. 프로젝트 봉인 (`openseal build`)
