@@ -6,7 +6,8 @@ use axum::{
     routing::any,
     Router,
 };
-use openseal_core::{compute_a_hash, compute_b_hash, compute_project_identity, ProjectIdentity};
+use openseal_core::{compute_a_hash, compute_project_identity, ProjectIdentity};
+use openseal_secret::compute_b_hash;
 use rand::{rngs::OsRng, RngCore};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -61,10 +62,16 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
 async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl IntoResponse {
     let client = reqwest::Client::new();
     
-    // 2. Dynamic Trajectory: Generate Wax (Challenge/Context)
-    let mut wax_bytes = [0u8; 32];
-    OsRng.fill_bytes(&mut wax_bytes);
-    let wax_hex = hex::encode(wax_bytes);
+    // 2. Dynamic Trajectory: Extract Wax (Challenge/Context) from Header
+    // Caller-driven Verification: The verification logic relies on the caller providing the challenge
+    let wax_header = req.headers().get("X-OpenSeal-Wax");
+    
+    let wax_hex = match wax_header {
+        Some(val) => val.to_str().unwrap_or_default().to_string(), // In production, handle unwrap better
+        None => {
+             return (StatusCode::BAD_REQUEST, "Missing Required Header: X-OpenSeal-Wax").into_response();
+        }
+    };
 
     // Prepare A-hash
     // Prepare Blinded A-hash
@@ -101,15 +108,26 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
             let _status = resp.status();
             let resp_bytes = resp.bytes().await.unwrap_or_default();
 
+            // 5b. Standardization (Canonicalization Attempt)
+            // To ensure verify tool can reproduce the hash, we must use the SAME serialization.
+            // We parse the raw body to Value, then re-serialize to string.
+            // This aligns with verify_seal() logic in core.
+            let original_body_str = String::from_utf8_lossy(&resp_bytes);
+            let result_json: serde_json::Value = serde_json::from_str(&original_body_str)
+                .unwrap_or(serde_json::Value::String(original_body_str.to_string()));
+            
+            // Re-serialize for hashing (Standardized)
+            let standardized_result_str = serde_json::to_string(&result_json).unwrap_or_default();
+            let standardized_bytes = standardized_result_str.as_bytes();
+
             // 5. Atomic Sealing (B-hash generation)
             // B = b_G(Result, A, Wax)
-            let b_hash = compute_b_hash(&a_hash, &wax_hex, &resp_bytes);
+            let b_hash = compute_b_hash(&a_hash, &wax_hex, standardized_bytes);
             let b_hash_hex = b_hash.to_hex().to_string();
 
             // 6. Optional Sign the Seal
             // Signature = Sign(Wax || A || B || SHA256(Result))
-            // Calculate Result Hash for binding
-            let result_hash = blake3::hash(&resp_bytes).to_hex().to_string();
+            let result_hash = blake3::hash(standardized_bytes).to_hex().to_string();
             
             let sign_payload = format!("{}{}{}{}", wax_hex, a_hash_hex, b_hash_hex, result_hash);
             let sig = state.signing_key.sign(sign_payload.as_bytes());
@@ -125,7 +143,7 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
                     // Full Seal with all debugging information
                     openseal_core::Seal {
                         signature: hex::encode(sig.to_bytes()),
-                        wax: Some(wax_hex),
+                        // wax is known to caller, no need to return
                         pub_key: Some(pub_key_hex),
                         a_hash: Some(a_hash_hex),
                         b_hash: Some(b_hash_hex),
@@ -135,10 +153,9 @@ async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl
                     // Signature-only for maximum security
                     openseal_core::Seal {
                         signature: hex::encode(sig.to_bytes()),
-                        wax: None,
-                        pub_key: None,
-                        a_hash: None,
-                        b_hash: None,
+                        pub_key: Some(pub_key_hex), // Required for verification
+                        a_hash: Some(a_hash_hex),   // Identity identifier (Public)
+                        b_hash: Some(b_hash_hex),   // Binding identifier (Public, opaque)
                     }
                 }
             };

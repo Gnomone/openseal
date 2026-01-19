@@ -1,0 +1,14 @@
+# OpenSeal Ignore Rules
+# Add files/folders to exclude from the File Integrity Check (A-hash)
+# Syntax is same as .gitignore
+
+node_modules/
+venv/
+__pycache__/
+.env
+*.md
+
+# OpenSeal Artifacts (Self-exclusion)
+openseal.json
+.opensealignore
+.openseal_mutable

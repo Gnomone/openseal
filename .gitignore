@@ -1,1 +1,28 @@
+# Security & Privacy (Core Sensitive Logic)
+crates/openseal-secret/
 docs/internal/
+docs/pending/
+.archive/
+.history.md
+.env*
+*.key
+*.pem
+*.secret
+
+# Build Artifacts
+target/
+dist/
+build/
+**/*.rs.bk
+
+# Temporary & Test Files
+tmp*/
+test_env_*/
+*.log
+*.swp
+*.tmp
+
+# IDE & System
+.vscode/
+.idea/
+.DS_Store

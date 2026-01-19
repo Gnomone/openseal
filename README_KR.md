@@ -10,16 +10,16 @@ OpenSeal은 API 서버 전체의 로직을 **사건(Event)**으로 박제하고,
 
 ### 2.2 명세 (Specification)
 
-* [5분 퀵스타트 가이드 (QUICKSTART_KR.md)](./docs/public/QUICKSTART_KR.md)
-* [7325 프로토콜 규격 (OSIP-7325_KR.md)](./docs/public/OSIP-7325_KR.md)
-* [공개 검증 명세 (SPEC_PUBLIC.md)](./docs/pending/SPEC_PUBLIC_KR.md)
-* [아키텍처 (ARCHITECTURE.md)](./docs/pending/ARCHITECTURE_KR.md)
+* [5분 퀵스타트 가이드](./docs/public/QUICKSTART_KR.md)
+* [프로토콜 규격 (OSIP-7325)](./docs/public/OSIP-7325_KR.md)
+* [보안 모델 및 방어](./docs/public/SECURITY_MODEL_KR.md)
+* [공개 정책](./docs/public/OPENSEAL_DISCLOSURE_POLICY_KR.md)
 
 *   **WASM 탈피**: 네트워크가 가능한 **암호화된 네이티브 런타임** 사용.
 *   **전체 무결성**: 단일 파일이 아닌, **프로젝트 전체 파일(머클트리)**을 봉인 대상으로 확장.
 *   **내장형 봉인 (Internalized)**: 난수 수령 및 봉인 생성 로직을 프로그램 내부에 강제 주입.
 
-> 📖 **[백서 읽기 (Whitepaper)](./docs/public/WHITEPAPER_KR.md)**: "실행의 신뢰" 모델 이해하기
+> 📖 **[프로토콜 규격 읽기 (OSIP-7325)](./docs/public/OSIP-7325_KR.md)**: "실행의 신뢰" 모델 이해하기
 
 ### 🛡️ 보안 공개 주의사항 (Security Disclosure Note)
 본 프로젝트는 다음 사항을 의도적으로 **공개하지 않습니다**:
@@ -79,12 +79,24 @@ OpenSeal은 머클 트리 생성 시 다음과 같은 규칙으로 파일 포함
 
 ## 4. 설치 및 실행 (Setup & Run)
 
+### 0. CLI 설치 (`cargo install`)
+Rust가 설치된 환경에서 아래 명령어로 OpenSeal CLI를 즉시 설치할 수 있습니다.
+
+```bash
+cargo install --git https://github.com/kjyyoung/OpenSeal.git --bin openseal
+```
+
 ### 1. 프로젝트 봉인 (`openseal build`)
 프로젝트 소스코드를 스캔하여 정체성(Identity)을 확정하고, 실행 명령(`--exec`)을 포함하여 패키징합니다.
 
 ```bash
 # Node.js 프로젝트 예시
 openseal build --source . --output dist --exec "node app.js"
+
+# [NEW] 이제 openseal.json이 자동으로 생성됩니다.
+# 생성된 openseal.json을 커밋하여 Identity를 선언하십시오.
+git add openseal.json
+git commit -m "chore: proclaim openseal identity"
 ```
 
 ### 2. 봉인된 서비스 실행 (`openseal run`)
@@ -106,6 +118,20 @@ cargo run --bin openseal -- run ./my-app --port 7325
 # 프로덕션 모드 (서명만 반환)
 OPENSEAL_MODE=production cargo run --bin openseal -- run ./my-app --port 7325
 ```
+
+---
+
+## 5. HighStation 연동 및 Trustless 검증
+
+### 5.1 Self-Proclaimed Identity
+HighStation과 같은 외부 검증자는 프로젝트의 `openseal.json`을 **Golden Truth**로 신뢰합니다. 따라서 빌드 후 생성된 `openseal.json`을 반드시 저장소에 포함시켜야 합니다. (주의: `openseal.json` 자체는 `.opensealignore`에 의해 해싱에서 제외되어야 하며, CLI가 이를 자동으로 처리합니다.)
+
+### 5.2 Trustless AI Agent (Client-Side Verification)
+OpenSeal은 중앙화된 검증자 없이도 **AI 에이전트가 스스로 검증**하는 모델을 지원합니다.
+
+1.  **Discovery**: 에이전트는 블록체인 등에서 서비스의 `Endpoint`와 `RootHash`만 조회합니다.
+2.  **P2P Verification**: 에이전트가 직접 `Wax`를 생성하여 요청하고, `openseal-verifier` (TS/WASM) 모듈로 응답을 검증합니다.
+3.  **Autonomous Trust**: 플랫폼을 거치지 않고 오직 암호학적 증명만으로 서비스를 신뢰합니다.
 
 ---
 

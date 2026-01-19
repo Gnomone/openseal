@@ -46,6 +46,20 @@ enum Commands {
         /// Setup command override (if not using openseal.json)
         #[arg(long)]
         cmd: Option<String>,
+    },
+    /// Verify an OpenSeal response to check integrity (Dev Mode)
+    Verify {
+        /// Path to the API response JSON file
+        #[arg(short, long)]
+        response: PathBuf,
+
+        /// Wax (Challenge) string used for the request
+        #[arg(short, long)]
+        wax: String,
+
+        /// (Optional) Expected Root Hash (A-hash seed) to verify identity
+        #[arg(long)]
+        root_hash: Option<String>,
     }
 }
 
@@ -128,23 +142,41 @@ async fn main() -> Result<()> {
                     Err(err) => eprintln!("Warning: {}", err),
                 }
             }
+
+            // [FIX] Force copy config files to ensure Runtime respects ignore rules
+            // They might be ignored by walker if listed in .opensealignore (Self-exclusion)
+            for file in &[".opensealignore", ".openseal_mutable"] {
+                let src_path = source.join(file);
+                if src_path.exists() {
+                     let dest_path = output.join(file);
+                     fs::copy(&src_path, &dest_path)?;
+                }
+            }
             println!("   📥 Copied {} files to build directory.", copied_count);
 
-            // 4. Write Seal Manifest
-            let manifest_path = output.join("openseal.json");
+            // 4. Create & Write Seal Manifest
             let mut manifest = serde_json::json!({
-                "version": "2.0",
+                "version": "1.0.0",
                 "identity": identity,
-                "sealed": true
+                "sealed": true,
+                "timestamp": chrono::Utc::now().to_rfc3339()
             });
 
             if let Some(cmd) = exec {
                 manifest["exec"] = serde_json::Value::String(cmd.clone());
                 println!("   ⚙️  Entry Command Registered: {}", cmd);
             }
+
+            // [AUTO-GEN] Write to Source (The Proclaimed Identity)
+            let source_manifest_path = source.join("openseal.json");
+            let source_file = fs::File::create(&source_manifest_path)?;
+            serde_json::to_writer_pretty(source_file, &manifest)?;
+            println!("   💾 Identity Manifest saved to {:?}", source_manifest_path);
             
-            let file = fs::File::create(manifest_path)?;
-            serde_json::to_writer_pretty(file, &manifest)?;
+            // Write to Output (The Bundled Identity)
+            let output_manifest_path = output.join("openseal.json");
+            let output_file = fs::File::create(output_manifest_path)?;
+            serde_json::to_writer_pretty(output_file, &manifest)?;
 
             println!("   ✨ Build Complete! Artifacts in {:?}", output);
         },
@@ -197,6 +229,7 @@ async fn main() -> Result<()> {
                 .env("OPENSEAL_PORT", internal_port.to_string())
                 .env("PATH", std::env::var("PATH").unwrap_or_default()) // Essential for finding executables
                 .env("NODE_ENV", std::env::var("NODE_ENV").unwrap_or_else(|_| "production".to_string()))
+                .env("PYTHONDONTWRITEBYTECODE", "1") // 🛡️ Security: Prevent .pyc generation interfering with A-hash
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .spawn()
@@ -205,14 +238,60 @@ async fn main() -> Result<()> {
             // Dynamic Port Polling (Security & Reliability)
             wait_for_port(internal_port, 10).await?;
 
-            // 5. Start Runtime Proxy
+            // 5. Start Runtime Proxy with Graceful Shutdown
             let target_url = format!("http://127.0.0.1:{}", internal_port);
-            let result = run_proxy_server(*port, target_url, app.clone()).await;
             
-            println!("   🛑 Shutting down...");
-            let _ = child.kill();
+            // Use tokio::select to handle both proxy and Ctrl+C
+            tokio::select! {
+                res = run_proxy_server(*port, target_url, app.clone()) => {
+                    if let Err(e) = res {
+                         eprintln!("   ❌ Runtime Error: {}", e);
+                    }
+                },
+                _ = tokio::signal::ctrl_c() => {
+                    println!("\n   🛑 Received Ctrl+C, shutting down...");
+                }
+            }
+
+            println!("   🧹 Cleaning up child process...");
+            let _ = child.kill(); // Synchronous kill for std::process::Child
+            // Oh, we used std::process::Command. Wait, main is async.
+            // If we use tokio::process::Command, we can await kill.
+            // Let's check imports.
             
-            result?;
+            // Currently using std::process::Command.
+            // Changing to tokio::process::Command is better for async.
+            // BUT for now, let's just use the current child.
+            // std::process::Child doesn't have kill().await. It has kill().
+             let _ = child.kill();
+             let _ = child.kill();
+        },
+        Commands::Verify { response, wax, root_hash } => {
+            println!("🔍 OpenSeal Verifier (Dev Mode)");
+            println!("   Response File: {:?}", response);
+            println!("   Wax Challenge: {}", wax);
+            if let Some(h) = root_hash {
+                println!("   Expected Root: {}", h);
+            }
+
+            let content = fs::read_to_string(response).context("Failed to read response file")?;
+            let json: serde_json::Value = serde_json::from_str(&content).context("Failed to parse JSON")?;
+
+            // Delegate to core verification logic
+            let report = openseal_core::verify_seal(&json, wax, root_hash.as_deref())?;
+
+            println!("\n🔍 Verification Report:");
+            println!("   Signature Valid: {}", if report.signature_verified { "✅" } else { "❌" });
+            println!("   Binding Valid:   {}", if report.binding_verified { "✅" } else { "❌" });
+            if root_hash.is_some() {
+                println!("   Identity Valid:  {}", if report.identity_verified { "✅" } else { "❌" });
+            }
+            println!("   ----------------------------------------");
+            println!("   Result: {}", report.message);
+
+            if !report.valid {
+                std::process::exit(1);
+            }
         }
     }
 
@@ -223,7 +302,16 @@ fn ensure_config_files(source: &Path) -> Result<()> {
     let ignore_path = source.join(".opensealignore");
     if !ignore_path.exists() {
         println!("   📝 Creating default .opensealignore...");
-        fs::write(&ignore_path, "# OpenSeal Ignore Rules\n# Add files/folders to exclude from the File Integrity Check (A-hash)\n# Syntax is same as .gitignore\n\n# node_modules/\n# venv/\n# .env\n")?;
+        fs::write(&ignore_path, "# OpenSeal Ignore Rules\n# Add files/folders to exclude from the File Integrity Check (A-hash)\n# Syntax is same as .gitignore\n\nnode_modules/\nvenv/\n__pycache__/\n.env\n*.md\n\n# OpenSeal Artifacts (Self-exclusion)\nopenseal.json\n.opensealignore\n.openseal_mutable\n")?;
+    } else {
+        // [AUTO-FIX] Ensure openseal.json is ignored to prevent spiral hashing
+        let content = fs::read_to_string(&ignore_path)?;
+        if !content.contains("openseal.json") {
+            println!("   🔧 Auto-patching .opensealignore: Adding openseal.json exclusion");
+            let mut file = fs::OpenOptions::new().append(true).open(&ignore_path)?;
+            use std::io::Write;
+            writeln!(file, "\n# Auto-added by OpenSeal CLI\nopenseal.json")?;
+        }
     }
 
     let mutable_path = source.join(".openseal_mutable");

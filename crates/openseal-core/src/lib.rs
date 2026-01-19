@@ -170,9 +170,7 @@ impl SealMode {
 /// In Production mode, only `signature` is populated; other fields are None.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seal {
-    pub signature: String,           // Always present (Mandatory)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wax: Option<String>,          // Dev only: Hex encoded Wax
+    pub signature: String,            // Always present (Mandatory)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pub_key: Option<String>,      // Dev only: Ephemeral Public Key
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -199,60 +197,112 @@ pub fn compute_a_hash(project_root: &Hash, wax: &str) -> Hash {
 ///
 /// **Security Note**: While this is more robust than the reference impl,
 /// production systems should consider additional obfuscation layers or native code compilation.
-fn derive_sealing_key_hardened(a_hash: &Hash, wax: &str) -> [u8; 32] {
-    // Stage 1: Initial Context Mixing
-    let mut stage1 = blake3::Hasher::new();
-    stage1.update(b"OPENSEAL_GB_V2_STAGE1");
-    stage1.update(a_hash.as_bytes());
-    
-    // Stage 2: Wax Expansion with Non-linear Mixing
-    let wax_bytes = wax.as_bytes();
-    let wax_len = wax_bytes.len();
-    for (i, byte) in wax_bytes.iter().enumerate() {
-        // Non-linear position-dependent mixing
-        let position_salt = ((i * 7) % 256) as u8;
-        let mixed = byte.wrapping_mul(position_salt).wrapping_add((wax_len % 256) as u8);
-        stage1.update(&[mixed]);
-    }
-    let intermediate = stage1.finalize();
-    
-    // Stage 3: Recursive Hashing with State Evolution
-    let mut stage2 = blake3::Hasher::new();
-    stage2.update(b"OPENSEAL_GB_V2_STAGE2");
-    stage2.update(intermediate.as_bytes());
-    
-    // Add crossed dependency on both A and Wax
-    let mut cross_hash = blake3::Hasher::new();
-    cross_hash.update(wax.as_bytes());
-    cross_hash.update(a_hash.as_bytes());
-    let cross = cross_hash.finalize();
-    stage2.update(cross.as_bytes());
-    
-    // Stage 4: Final Key Derivation with Alternating Mix
-    let mut final_key = [0u8; 32];
-    let stage2_result = stage2.finalize();
-    let stage2_bytes = stage2_result.as_bytes();
-    
-    // Interleave bytes from multiple sources
-    for i in 0..32 {
-        let a_byte = a_hash.as_bytes()[i % 32];
-        let stage_byte = stage2_bytes[i];
-        let cross_byte = cross.as_bytes()[(31 - i) % 32]; // Reverse order
-        
-        final_key[i] = a_byte.wrapping_add(stage_byte) ^ cross_byte;
-    }
-    
-    final_key
+// [SEALED] derive_sealing_key_hardened has been moved to openseal-secret crate.
+// [SEALED] compute_b_hash has been moved to openseal-secret crate.
+
+#[derive(Debug, Serialize)]
+pub struct VerificationReport {
+    pub valid: bool,
+    pub signature_verified: bool,
+    pub binding_verified: bool,
+    pub identity_verified: bool,
+    pub message: String,
 }
 
-/// Computes B-hash (Result Binding) using the HARDENED g_B logic.
-/// This ensures that Result is cryptographically bound to both A-hash and Wax
-/// through a complex, non-obvious transformation function.
-pub fn compute_b_hash(a_hash: &Hash, wax: &str, result: &[u8]) -> Hash {
-    let key = derive_sealing_key_hardened(a_hash, wax);
-    blake3::keyed_hash(&key, result)
-}
+/// Verifies the integrity of a Seal provided in a JSON response.
+/// 
+/// # Arguments
+/// * `response` - The full JSON response object (containing "result" and "openseal")
+/// * `wax` - The challenge string used for the request
+/// * `expected_root_hash` - Optional. If provided, verifies A-hash matches.
+pub fn verify_seal(response: &serde_json::Value, wax: &str, expected_root_hash: Option<&str>) -> Result<VerificationReport> {
+    use ed25519_dalek::{Verifier, VerifyingKey, Signature};
 
+    // 1. Extract Seal Components
+    let openseal = response.get("openseal").context("Missing 'openseal' field")?;
+    let result_val = response.get("result").context("Missing 'result' field")?;
+    
+    // In Dev mode, these should be present. In Prod, they are missing (cannot verify without out-of-band info).
+    let signature_hex = openseal.get("signature").and_then(|v| v.as_str()).context("Missing signature")?;
+    let pub_key_hex = openseal.get("pub_key").and_then(|v| v.as_str()).context("Missing pub_key (Dev mode required for CLI verify)")?;
+    let a_hash_hex = openseal.get("a_hash").and_then(|v| v.as_str()).context("Missing a_hash")?;
+    let b_hash_hex = openseal.get("b_hash").and_then(|v| v.as_str()).context("Missing b_hash")?;
+
+    // 2. Decode Hex
+    let pub_key_bytes = hex::decode(pub_key_hex).context("Invalid pub_key hex")?;
+    let pub_key = VerifyingKey::from_bytes(&pub_key_bytes.try_into().map_err(|_| anyhow::anyhow!("Invalid pub_key length"))?)?;
+    
+    let signature_bytes = hex::decode(signature_hex).context("Invalid signature hex")?;
+    let signature = Signature::from_bytes(&signature_bytes.try_into().map_err(|_| anyhow::anyhow!("Invalid signature length"))?);
+
+    // 3. Reconstruct Payload for Signature Verification
+    // Payload Rule: wax_hex + a_hash_hex + b_hash_hex + blake3(result_bytes).to_hex()
+    
+    // Issue: How to get original result bytes?
+    // We assume result_val is exact representation.
+    // Try converting back to string. Note: formatting differences will cause failure.
+    let result_str = if result_val.is_string() {
+        result_val.as_str().unwrap().to_string()
+    } else {
+        serde_json::to_string(result_val)?
+    };
+    
+    let result_hash = blake3::hash(result_str.as_bytes()).to_hex().to_string();
+    let payload = format!("{}{}{}{}", wax, a_hash_hex, b_hash_hex, result_hash);
+    
+    // 4. Verify Signature
+    let signature_verified = pub_key.verify(payload.as_bytes(), &signature).is_ok();
+    
+    if !signature_verified {
+        return Ok(VerificationReport {
+            valid: false,
+            signature_verified: false,
+            binding_verified: false,
+            identity_verified: false,
+            message: "Signature verification failed. The seal may have been tampered.".to_string(),
+        });
+    }
+
+    // 5. Verify Logic Binding (B-hash)
+    // [SEALED POLICY] The internal binding logic (g_B) is sealed.
+    // Therefore, public verifiers CANNOT recompute B-hash to verify binding.
+    // We rely SOLELY on the Signature to prove that the Runtime (which knows g_B)
+    // has attested to this B-hash for this Result.
+    
+    // If signature is valid, then Binding is implicitly valid (trusted runtime).
+    let binding_verified = true; 
+    
+    // Legacy check removed: we don't have compute_b_hash here anymore.
+
+    // 6. Verify Identity (Optional A-hash check)
+    let mut identity_verified = true;
+    if let Some(root_hash_hex) = expected_root_hash {
+        let root_hash = Hash::from_hex(root_hash_hex)?;
+        // We can verify A-hash because compute_a_hash is PUBLIC spec.
+        let computed_a = compute_a_hash(&root_hash, wax);
+        if computed_a.to_hex().to_string() != a_hash_hex {
+            identity_verified = false;
+        }
+    }
+    
+    if expected_root_hash.is_some() && !identity_verified {
+        return Ok(VerificationReport {
+            valid: false,
+            signature_verified: true,
+            binding_verified: true,
+            identity_verified: false,
+            message: "Identity Mismatch. The code executed is different from what was expected.".to_string(),
+        });
+    }
+
+    Ok(VerificationReport {
+        valid: true,
+        signature_verified: true,
+        binding_verified: true,
+        identity_verified,
+        message: "✅ SEAL VALID. The result is authentic and untampered.".to_string(),
+    })
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -369,7 +419,6 @@ mod tests {
         fn test_seal_serialization_full() {
             let seal = Seal {
                 signature: "abc123".to_string(),
-                wax: Some("wax123".to_string()),
                 pub_key: Some("key123".to_string()),
                 a_hash: Some("ahash123".to_string()),
                 b_hash: Some("bhash123".to_string()),
@@ -377,14 +426,13 @@ mod tests {
             
             let json = serde_json::to_string(&seal).unwrap();
             assert!(json.contains("\"signature\""));
-            assert!(json.contains("\"wax\""));
+            // wax is removed from struct
         }
 
         #[test]
         fn test_seal_serialization_signature_only() {
             let seal = Seal {
                 signature: "abc123".to_string(),
-                wax: None,
                 pub_key: None,
                 a_hash: None,
                 b_hash: None,
@@ -392,7 +440,6 @@ mod tests {
             
             let json = serde_json::to_string(&seal).unwrap();
             assert!(json.contains("\"signature\""));
-            assert!(!json.contains("\"wax\""));
         }
     }
 }

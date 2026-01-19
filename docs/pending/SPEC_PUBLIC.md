@@ -31,7 +31,7 @@ The proof object returned by the OpenSeal Runtime.
 | `pub_key` | `String (Hex)` | **Runtime Identity** (Ephemeral Public Key) | ✅ Public Assertion |
 | `a_hash` | `String (Hex)` | **Blinded Pre-State ID** (Project + Wax) | ✅ Public Assertion |
 | `b_hash` | `String (Hex)` | **Post-State ID** (Result Binding) | ✅ Public Assertion |
-| `wax` | `String (Any)` | **Challenge Context** for Uniqueness & Verification | ✅ Public Assertion |
+| `wax` | `None` | **Challenge Context** (Provided by Request Header) | ✅ Public Assertion |
 | `signature` | `String (Hex)` | Digital Signature by OpenSeal Runtime | ✅ Public Assertion |
 
 ### 2.2 Result

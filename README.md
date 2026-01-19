@@ -16,7 +16,7 @@ To overcome the network limitations of WASM and prevent orchestration tampering,
 *   **Full Integrity**: Seals the entire project (via Merkle Tree) instead of a single file.
 *   **Caller Monopoly**: Replaces the execution caller to capture results as state transitions.
 
-> 📖 **[Read the Whitepaper](./docs/public/WHITEPAPER.md)**: Understanding the "Trust of Execution" Model.
+> 📖 **[Read the Protocol Spec (OSIP-7325)](./docs/public/OSIP-7325.md)**: Understanding the "Trust of Execution" Model.
 
 ### 🛡️ Security Disclosure Note
 This project intentionally does **NOT** disclose:
@@ -28,13 +28,11 @@ This project intentionally does **NOT** disclose:
 
 ---
 
-### 2.2 Specification
-
+### 2.2 Documentation
 * [5-Minute Quickstart Guide](./docs/public/QUICKSTART.md)
-* [7325 Protocol Spec (OSIP-7325.md)](./docs/public/OSIP-7325.md)
-* [Public Verification Spec](./docs/pending/SPEC_PUBLIC.md)
-* [Architecture](./docs/pending/ARCHITECTURE.md)
-* [Disclosure Policy (OPENSEAL_DISCLOSURE_POLICY.md)](./docs/public/OPENSEAL_DISCLOSURE_POLICY.md)
+* [Protocol Specification (OSIP-7325)](./docs/public/OSIP-7325.md)
+* [Security Model & Threat Defense](./docs/public/SECURITY_MODEL.md)
+* [Disclosure Policy](./docs/public/OPENSEAL_DISCLOSURE_POLICY.md)
 
 ---
 
@@ -76,8 +74,8 @@ These files are completely excluded from the **File Integrity Check (A-hash)** a
 *   **`.gitignore`**: Respects standard Git ignore rules (e.g., `node_modules/`, `venv/`, `dist/`).
 *   **`.opensealignore`**: OpenSeal-specific exclusion rules. Uses the same syntax as `.gitignore`. Any pattern defined here is **100% ignored**, from its existence in the hash to its presence in the output.
 
-> [!IMPORTANT]
-> **Integrity of Configurations (Self-Inclusion)**: `.opensealignore`, `.openseal_mutable`, and the generated `openseal.json` themselves **are included** in the **File Integrity Check (A-hash)**. If a provider modifies these rules to bypass security, the integrity check will fail as the configuration files themselves are considered tampered.
+> [!NOTE]
+> **Deterministic Builds**: To ensure the **Identity (Root A-Hash)** remains consistent between the source code (pre-build) and the runtime artifact (post-build), OpenSeal automatically excludes generated configuration files (`openseal.json`, `.opensealignore`) and environment-specific folders (`venv`, `node_modules`) from the integrity check.
 
 ### 3.2 Content Exclusion (Mutable Files)
 Used when you want to seal the **existence (structure)** of a file but allow its **content** to change (e.g., local databases, logs).
@@ -97,6 +95,13 @@ Used when you want to seal the **existence (structure)** of a file but allow its
 ---
 
 ## 🛠️ Usage (Vision)
+
+### 0. CLI Installation (`cargo install`)
+You can install the OpenSeal CLI immediately using `cargo` if you have the Rust environment set up.
+
+```bash
+cargo install --git https://github.com/kjyyoung/OpenSeal.git --bin openseal
+```
 
 ### 1. Sealing a Project (`openseal build`)
 Scan the source code to determine Identity, and package it including the execution command (`--exec`).

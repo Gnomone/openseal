@@ -13,3 +13,5 @@ serde_json = { workspace = true }
 blake3 = { workspace = true }
 openseal-runtime = { path = "../openseal-runtime" }
 tokio = { workspace = true, features = ["full"] }
+chrono = "0.4"
+hex = { workspace = true }
