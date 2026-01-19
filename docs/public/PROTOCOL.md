@@ -24,6 +24,8 @@ A verifier confirms the integrity of the result through the following steps:
 2. **Wax Validation**: Ensure the Wax in the response matches the challenge sent.
 3. **Signature Check**: Use the public key to verify that the signature over (A, B, Wax) is valid.
 
+> 💡 **Practical Verification**: For step-by-step CLI instructions, see the [Usage Guide (USAGE)](./USAGE.md).
+
 ---
 
 ### Implementation Note (Non-Reproducibility)

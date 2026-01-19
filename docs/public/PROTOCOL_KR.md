@@ -24,6 +24,8 @@ OpenSeal은 프로젝트의 정체성(A-hash), 요청별 챌린지(Wax), 그리�
 2. **Wax 일치 확인**: 자신이 보낸 난수와 응답에 포함된 Wax가 일치하는지 확인합니다.
 3. **서명 검증**: 공개키를 사용하여 (A, B, Wax)에 대한 서명이 유효한지 검사합니다.
 
+> 💡 **실제 검증 방법**: CLI를 사용한 구체적인 검증 절차는 [사용 가이드 (USAGE)](./USAGE_KR.md)를 참조하세요.
+
 ---
 
 ### Implementation Note (Non-Reproducibility)
