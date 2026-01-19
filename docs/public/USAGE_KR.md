@@ -29,6 +29,25 @@ openseal run --port 3000
 openseal verify --response result.json --wax "난수값" --root-hash "예상-A-hash"
 ```
 
+**`result.json` 파일 형식:**
+OpenSeal 런타임이 생성한 응답 파일은 다음과 같은 구조를 가집니다:
+```json
+{
+  "result": { /* 실제 API 응답 결과 */ },
+  "openseal": {
+    "signature": "...",  // 서명
+    "pub_key": "...",    // 공개키
+    "a_hash": "...",     // 코드 정체성
+    "b_hash": "..."      // 결과 바인딩
+  }
+}
+```
+
+**검증 내용:**
+- ✅ **서명 검증**: `openseal.signature`가 `pub_key`로 검증 가능한지 확인
+- ✅ **Wax 일치**: 응답에 포함된 Wax가 요청 시 보낸 난수와 일치하는지 확인
+- ✅ **코드 정체성**: (--root-hash 제공 시) `a_hash`가 예상 코드와 일치하는지 확인
+
 **`verify` 명령어를 사용하는 경우:**
 - 배포 전 로컬에서 봉인된 애플리케이션 테스트
 - API 응답에 유효한 인감(Seal)이 포함되어 있는지 감사
