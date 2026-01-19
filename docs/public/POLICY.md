@@ -44,7 +44,31 @@ OpenSeal distributes code and binaries across five distinct layers to balance tr
 
 ---
 
-## 4. Privacy & Integrity Commitment
+## 4. Trust Model
+
+### Platform for Discovery, Cryptography for Trust
+
+OpenSeal's trust comes from **mathematical verification**, not from a central platform.
+
+| Role | Platform (HighStation) | OpenSeal Cryptography |
+| :--- | :--- | :--- |
+| **Provider Discovery** | ✅ Platform provides | - |
+| **Reputation Management** | ✅ Platform provides | - |
+| **Payment Facilitation** | ✅ Platform provides | - |
+| **Result Verification** | ❌ Platform not needed | ✅ Anyone verifies independently |
+
+### Anyone, Anywhere, Anytime
+
+- **Providers**: Self-test before deployment
+- **Consumers**: Verify API response integrity
+- **Auditors**: Independent third-party validation
+- **Platforms**: Verification for reputation scoring
+
+All use the same open-source verifier and operate without central authority.
+
+---
+
+## 5. Privacy & Integrity Commitment
 
 The OpenSeal Protected Runtime is built on a **Zero-Backend Policy**:
 - **Zero Data Collection**: No user data, execution results, or metadata are collected or stored.

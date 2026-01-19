@@ -18,6 +18,8 @@ OpenSeal achieves "Result-Code Binding" by combining the project's identity (A-h
 
 ## 2. Verification Process
 
+**Anyone can be a verifier.** OpenSeal's verification is platform-independent, allowing not only providers but also **API consumers (clients)** to independently confirm the integrity of results.
+
 A verifier confirms the integrity of the result through the following steps:
 
 1. **A-hash Audit**: Download the code from a trusted source and compute the root hash directly.
@@ -25,6 +27,8 @@ A verifier confirms the integrity of the result through the following steps:
 3. **Signature Check**: Use the public key to verify that the signature over (A, B, Wax) is valid.
 
 > 💡 **Practical Verification**: For step-by-step CLI instructions, see the [Usage Guide (USAGE)](./USAGE.md).
+
+> 🌐 **Decentralized Trust**: Verification works without any central platform. With just the open-source verifier, anyone, anywhere, anytime can validate results.
 
 ---
 
