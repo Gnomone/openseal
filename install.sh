@@ -1,33 +1,30 @@
 #!/bin/bash
 set -e
 
-echo "=================================================="
-echo "         OpenSeal Installer (v0.1.0)              "
-echo "=================================================="
+# Configuration
+REPO="kjyyoung/openseal"
+VERSION="v0.1.0" # Hardcoded for now, or fetch latest
+BINARY_NAME="openseal-linux"
+DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/$BINARY_NAME"
 
-# 1. Download Location
-DOWNLOAD_URL="https://github.com/kjyyoung/openseal/releases/latest/download/openseal"
-INSTALL_DIR="/usr/local/bin"
-BINARY_NAME="openseal"
+echo "🔐 OpenSeal Installer"
+echo "   Target: $DOWNLOAD_URL"
 
-echo "⬇️  Downloading OpenSeal binary..."
-curl -L -o "$BINARY_NAME" "$DOWNLOAD_URL"
+# 1. Download
+echo "   ⬇️  Downloading binary..."
+curl -L $DOWNLOAD_URL -o openseal
 
-# 2. Make Executable
-chmod +x "$BINARY_NAME"
+# 2. Verify (Optional checksum in future)
 
 # 3. Install
-echo "📦 Installing to $INSTALL_DIR..."
-# Check if we have write access, otherwise use sudo
-if [ -w "$INSTALL_DIR" ]; then
-    mv "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+echo "   ⚙️  Installing to /usr/local/bin..."
+chmod +x openseal
+if [ -w /usr/local/bin ]; then
+    mv openseal /usr/local/bin/openseal
 else
-    echo "   (Sudo permission required)"
-    sudo mv "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+    echo "   🔒 Elevating permissions (sudo)..."
+    sudo mv openseal /usr/local/bin/openseal
 fi
 
-echo ""
-echo "✅ Installation Complete!"
-echo "--------------------------------------------------"
-openseal --version
-echo "--------------------------------------------------"
+echo "   ✅ Installation Complete!"
+echo "   Try running: openseal --help"
