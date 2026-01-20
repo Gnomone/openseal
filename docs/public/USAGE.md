@@ -8,8 +8,8 @@ This guide covers how to set up, execute, and safely manage your OpenSeal-protec
 
 ### Step 1: Install CLI
 ```bash
-# One-line installation via GitHub
-cargo install --git https://github.com/kjyyoung/openseal.git --bin openseal
+# Download and install the latest binary for your OS
+curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh | bash
 ```
 
 ### Step 2: Seal (Build)

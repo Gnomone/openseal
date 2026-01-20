@@ -4,10 +4,12 @@
 
 Verify that your service code is untampered and mathematically proven to your customers, without modifying a single line of your actual business logic.
 
-### 1. Install
+### 1. Install via Binary (Recommended)
 ```bash
-cargo install --git https://github.com/kjyyoung/openseal.git --bin openseal
+# Download and install the latest binary for your OS
+curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh | bash
 ```
+> **Note**: Source compilation via `cargo install` is no longer supported for public builds as core security logic is protected. Please use the binary release.
 
 ### 2. Seal (Build)
 > [!IMPORTANT]

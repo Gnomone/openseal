@@ -4,10 +4,12 @@
 
 내 서비스 안에서 내 API 서비스를 단 한 줄도 수정하지 않고, 코드가 변조되지 않았음을 고객에게 수학적으로 증명하세요.
 
-### 1. 설치
+### 1. 설치 (바이너리 권장)
 ```bash
-cargo install --git https://github.com/kjyyoung/openseal.git --bin openseal
+# 최신 바이너리를 다운로드하여 설치합니다.
+curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh | bash
 ```
+> **주의**: 핵심 보안 로직 보호를 위해 `cargo install`을 통한 소스 컴파일은 더 이상 지원하지 않습니다. 제공된 바이너리를 사용해 주세요.
 
 ### 2. 봉인 (Build)
 > [!IMPORTANT]

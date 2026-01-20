@@ -270,7 +270,7 @@ pub fn verify_seal(response: &serde_json::Value, wax: &str, expected_root_hash: 
     // has attested to this B-hash for this Result.
     
     // If signature is valid, then Binding is implicitly valid (trusted runtime).
-    let binding_verified = true; 
+    let _binding_verified = true; 
     
     // Legacy check removed: we don't have compute_b_hash here anymore.
 
