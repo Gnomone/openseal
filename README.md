@@ -16,14 +16,14 @@ curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh
 > Always run OpenSeal commands at your **project root** directory.
 
 ```bash
-# Register your existing execution command
-openseal build --exec "node app.js"
+# Register your existing execution command (output to 'sealed' to avoid overwriting ./dist)
+openseal build --exec "node app.js" --output sealed
 ```
 
 ### 3. Run
 ```bash
 # OpenSeal Proxy Port (Your original server port remains used internally)
-openseal run --app ./dist --port 7325
+openseal run --app sealed --port 7325
 ```
 
 **✅ Done!** Your API service now attaches an unforgeable cryptographic Seal to every execution result.
