@@ -22,8 +22,8 @@ openseal build --exec "node app.js" --output sealed
 
 ### 3. 실행 (Run)
 ```bash
-# OpenSeal 프록시 포트 (기존 서버 포트는 내부적으로 사용됨)
-openseal run --app sealed --port 7325
+# 원하는 포트 지정 (OpenSeal이 내부 포트를 자동 관리)
+openseal run --app sealed --port 3000
 ```
 
 **✅ 끝!** 당신의 API 서비스는 이제 모든 실행 결과에 대해 위조 불가능한 암호학적 인감(Seal)을 찍어 보냅니다.

@@ -21,6 +21,8 @@ openseal build --exec "node app.js" --output sealed
 
 ### 3단계: 실행 (봉인 활성화)
 ```bash
+# 원하는 포트 지정 (예: 3000)
+# OpenSeal이 내부 포트 충돌을 자동으로 해결합니다.
 openseal run --app sealed --port 3000
 ```
 

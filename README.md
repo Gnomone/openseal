@@ -22,8 +22,8 @@ openseal build --exec "node app.js" --output sealed
 
 ### 3. Run
 ```bash
-# OpenSeal Proxy Port (Your original server port remains used internally)
-openseal run --app sealed --port 7325
+# Use your original port (OpenSeal manages internal port automatically)
+openseal run --app sealed --port 3000
 ```
 
 **✅ Done!** Your API service now attaches an unforgeable cryptographic Seal to every execution result.
