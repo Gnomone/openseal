@@ -16,10 +16,11 @@ curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh 
 > 모든 OpenSeal 명령어는 반드시 **프로젝트 루트** 디렉토리에서 실행해야 합니다.
 
 ```bash
-```bash
-# 기존 실행 명령어를 등록하고, 결과물을 'dist_opensealed' 폴더에 저장 (기존 dist 덮어쓰기 방지)
+# Node.js 예시: 실행 명령어를 등록하고, 'dist_opensealed' 폴더에 저장
 openseal build --exec "node app.js" --output dist_opensealed
 ```
+> [!TIP]
+> Python, Go, Rust 등 **다른 언어별 최적화 명령어**는 [사용 가이드(USAGE)](./docs/public/USAGE_KR.md#2-언어별-퀵스타트-quickstart-by-language)에서 확인하세요.
 
 ### 3. 실행 (Run)
 ```bash

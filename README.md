@@ -16,10 +16,11 @@ curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh 
 > Always run OpenSeal commands at your **project root** directory.
 
 ```bash
-```bash
-# Register your existing execution command (output to 'dist_opensealed' to avoid overwriting ./dist)
+# Node.js Example: Register execution command and output to 'dist_opensealed'
 openseal build --exec "node app.js" --output dist_opensealed
 ```
+> [!TIP]
+> For **other languages** like Python, Go, and Rust, see the [Usage Guide (USAGE)](./docs/public/USAGE.md#2-quickstart-by-language).
 
 ### 3. Run
 ```bash
