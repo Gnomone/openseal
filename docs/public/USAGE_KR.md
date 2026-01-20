@@ -15,15 +15,15 @@ curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh
 ### 2단계: 봉인 (Build)
 ```bash
 # 프로젝트 루트에서 실행하세요.
-# --output 옵션으로 결과물 폴더를 따로 지정하세요 ('sealed' 등) - 기존 dist 폴더 보호
-openseal build --exec "node app.js" --output sealed
+# --output 옵션으로 결과물 폴더를 따로 지정하세요 ('dist_opensealed' 등) - 기존 dist 폴더 보호
+openseal build --exec "node app.js" --output dist_opensealed
 ```
 
 ### 3단계: 실행 (봉인 활성화)
 ```bash
 # 원하는 포트 지정 (예: 3000)
 # OpenSeal이 내부 포트 충돌을 자동으로 해결합니다.
-openseal run --app sealed --port 3000
+openseal run --app dist_opensealed --port 3000
 ```
 
 ### 4단계: 검증 (선택사항 - 테스트용)

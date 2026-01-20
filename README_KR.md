@@ -16,14 +16,15 @@ curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh
 > 모든 OpenSeal 명령어는 반드시 **프로젝트 루트** 디렉토리에서 실행해야 합니다.
 
 ```bash
-# 기존 실행 명령어를 등록하고, 결과물을 'sealed' 폴더에 저장 (기존 dist 덮어쓰기 방지)
-openseal build --exec "node app.js" --output sealed
+```bash
+# 기존 실행 명령어를 등록하고, 결과물을 'dist_opensealed' 폴더에 저장 (기존 dist 덮어쓰기 방지)
+openseal build --exec "node app.js" --output dist_opensealed
 ```
 
 ### 3. 실행 (Run)
 ```bash
 # 원하는 포트 지정 (OpenSeal이 내부 포트를 자동 관리)
-openseal run --app sealed --port 3000
+openseal run --app dist_opensealed --port 3000
 ```
 
 **✅ 끝!** 당신의 API 서비스는 이제 모든 실행 결과에 대해 위조 불가능한 암호학적 인감(Seal)을 찍어 보냅니다.

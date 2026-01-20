@@ -15,15 +15,15 @@ curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh
 ### Step 2: Seal (Build)
 ```bash
 # Run at your project root
-# Use --output to specify a separate directory (e.g., 'sealed') to avoid overwriting your build files
-openseal build --exec "node app.js" --output sealed
+# Use --output to specify a separate directory (e.g., 'dist_opensealed') to avoid overwriting your build files
+openseal build --exec "node app.js" --output dist_opensealed
 ```
 
 ### Step 3: Run (Sealing Active)
 ```bash
 # Use your original port (e.g., 3000)
 # OpenSeal handles internal port redirection automatically.
-openseal run --app sealed --port 3000
+openseal run --app dist_opensealed --port 3000
 ```
 
 ### Step 4: Verify (Optional - For Testing)
