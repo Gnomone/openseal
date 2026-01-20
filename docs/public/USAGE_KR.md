@@ -26,6 +26,50 @@ openseal build --exec "node app.js" --output dist_opensealed
 openseal run --app dist_opensealed --port 3000
 ```
 
+---
+
+## 2. 언어별 퀵스타트 (Quickstart by Language)
+
+OpenSeal은 검증된 소스 코드를 직접 실행(JIT)하는 것을 권장합니다. 각 환경에 맞는 복사-붙여넣기 명령어입니다.
+
+### 🟢 Node.js (TypeScript)
+빌드된 `dist` 대신 **소스 코드 무결성**을 위해 `ts-node` 사용을 권장합니다.
+```bash
+# 빌드
+openseal build --exec "npx ts-node src/index.ts" --output dist_opensealed
+
+# 실행
+cd dist_opensealed && npm install && cd ..
+openseal run --app dist_opensealed --port 3000
+```
+
+### 🟡 Python
+```bash
+# 빌드
+openseal build --exec "python main.py" --output dist_opensealed
+
+# 실행 (필요 시 venv 활성화)
+openseal run --app dist_opensealed --port 3000
+```
+
+### 🔵 Go
+```bash
+# 빌드
+openseal build --exec "go run main.go" --output dist_opensealed
+
+# 실행
+openseal run --app dist_opensealed --port 3000
+```
+
+### 🦀 Rust
+```bash
+# 빌드 (target 폴더는 자동으로 무시됩니다)
+openseal build --exec "cargo run --release" --output dist_opensealed
+
+# 실행
+openseal run --app dist_opensealed --port 3000
+```
+
 ### 4단계: 검증 (선택사항 - 테스트용)
 ```bash
 # API 응답의 무결성을 검증합니다.

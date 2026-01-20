@@ -56,4 +56,5 @@ This mirrors industry-standard designs used in Secure Enclaves (TEE), HSM-backed
 ## 📖 Learn More
 * [Protocol Specification (PROTOCOL)](./docs/public/PROTOCOL.md)
 * [Security Policy & Strategy (POLICY)](./docs/public/POLICY.md)
+* [Language Agnosticism & Source Integrity (AGNOSTICISM)](./docs/public/AGNOSTICISM.md)
 * [Usage Guide (USAGE)](./docs/public/USAGE.md)

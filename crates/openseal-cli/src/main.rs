@@ -67,11 +67,11 @@ enum Commands {
 async fn wait_for_port(port: u16, timeout_secs: u64) -> Result<()> {
     let start = Instant::now();
     let addr = format!("127.0.0.1:{}", port);
-    println!("   ⏳ Waiting for internal app to bind to port {}...", port);
+    // Internal logs hidden as requested
     
     while start.elapsed().as_secs() < timeout_secs {
         if TcpStream::connect(&addr).is_ok() {
-            println!("   ✅ Internal app is READY (detected in {:?})", start.elapsed());
+            // println!("   Internal app is READY (detected in {:?})", start.elapsed());
             return Ok(());
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Build { source, output, exec } => {
-            println!("📦 OpenSeal Packaging System v0.1.0");
+            println!("OpenSeal Packaging System v0.1.0");
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 
@@ -107,20 +107,20 @@ async fn main() -> Result<()> {
             ensure_config_files(source)?;
 
             // 1. Calculate Identity (Verification)
-            println!("   🔍 Scanning and Sealing...");
+            println!("   Scanning and Sealing...");
             let identity = compute_project_identity(source)?;
             println!("   ✅ Root A-Hash: {}", identity.root_hash.to_hex());
-            println!("   📄 Files Indexed: {}", identity.file_count);
+            println!("   Files Indexed: {}", identity.file_count);
 
             // 2. Prepare Output
             if output.exists() {
-                println!("   🧹 Cleaning previous build...");
+                println!("   Cleaning previous build...");
                 fs::remove_dir_all(output).context("Failed to clean output directory")?;
             }
             fs::create_dir_all(output).context("Failed to create output directory")?;
 
             // 3. Copy Files (Packaging) using .gitignore respect
-            println!("   🚚 Copying source code...");
+            println!("   Copying source code...");
             let walker = WalkBuilder::new(source)
                 .hidden(false)
                 .git_ignore(true)
@@ -166,7 +166,7 @@ async fn main() -> Result<()> {
                      fs::copy(&src_path, &dest_path)?;
                 }
             }
-            println!("   📥 Copied {} files to build directory.", copied_count);
+            println!("   Copied {} files to build directory.", copied_count);
 
             // 4. Create & Write Seal Manifest
             let mut manifest = serde_json::json!({
@@ -178,14 +178,14 @@ async fn main() -> Result<()> {
 
             if let Some(cmd) = exec {
                 manifest["exec"] = serde_json::Value::String(cmd.clone());
-                println!("   ⚙️  Entry Command Registered: {}", cmd);
+                println!("   Entry Command Registered: {}", cmd);
             }
 
             // [AUTO-GEN] Write to Source (The Proclaimed Identity)
             let source_manifest_path = source.join("openseal.json");
             let source_file = fs::File::create(&source_manifest_path)?;
             serde_json::to_writer_pretty(source_file, &manifest)?;
-            println!("   💾 Identity Manifest saved to {:?}", source_manifest_path);
+            println!("   Identity Manifest saved to {:?}", source_manifest_path);
             
             // Write to Output (The Bundled Identity)
             let output_manifest_path = output.join("openseal.json");
@@ -222,10 +222,10 @@ async fn main() -> Result<()> {
             // Wait, we need to pick a port for the child app to listen ON.
             // We just found a free one.
             
-            println!("   🔒 Caller Monopoly Active");
+            // println!("   🔒 Caller Monopoly Active");
             println!("   🌐 Proxy Port (Public): {}", public_port);
-            println!("   🔌 Internal Port (Hidden): {}", internal_port);
-            println!("   🛠️  Service Command: {}", run_cmd);
+            // println!("   🔌 Internal Port (Hidden): {}", internal_port);
+            // println!("   🛠️  Service Command: {}", run_cmd);
 
             // 4. Spawn Child Process
             let parts: Vec<&str> = run_cmd.split_whitespace().collect();
@@ -235,7 +235,7 @@ async fn main() -> Result<()> {
             let program = parts[0];
             let args = &parts[1..];
 
-            println!("   ✨ Spawning Application (Sanitized Environment)...");
+            // println!("   ✨ Spawning Application (Sanitized Environment)...");
             let mut child = Command::new(program)
                 .args(args)
                 .current_dir(app)
@@ -317,7 +317,7 @@ fn ensure_config_files(source: &Path) -> Result<()> {
     let ignore_path = source.join(".opensealignore");
     if !ignore_path.exists() {
         println!("   📝 Creating default .opensealignore...");
-        fs::write(&ignore_path, "# OpenSeal Ignore Rules\n# Add files/folders to exclude from the File Integrity Check (A-hash)\n# Syntax is same as .gitignore\n\nnode_modules/\nvenv/\n__pycache__/\n.env\n*.md\n\n# OpenSeal Artifacts (Self-exclusion)\nopenseal.json\n.opensealignore\n.openseal_mutable\n")?;
+        fs::write(&ignore_path, "# OpenSeal Ignore Rules\n# Add files/folders to exclude from the File Integrity Check (A-hash)\n# Syntax is same as .gitignore\n\nnode_modules/\nvenv/\n__pycache__/\n.env\n*.md\n\n# Build Outcomes (Source Integrity Only)\ndist/\nbuild/\n\n# OpenSeal Artifacts (Self-exclusion)\nopenseal.json\n.opensealignore\n.openseal_mutable\n")?;
     } else {
         // [AUTO-FIX] Ensure openseal.json is ignored to prevent spiral hashing
         let content = fs::read_to_string(&ignore_path)?;

@@ -56,4 +56,5 @@ OpenSeal의 인감 생성 엔진은 '보호된 런타임' 형태로 배포됩니
 ## 📖 더 알아보기
 * [프로토콜 규격 (PROTOCOL)](./docs/public/PROTOCOL_KR.md)
 * [보안 정책 및 전략 (POLICY)](./docs/public/POLICY_KR.md)
+* [언어 중립성 및 소스 무결성 (AGNOSTICISM)](./docs/public/AGNOSTICISM_KR.md)
 * [사용 가이드 (USAGE)](./docs/public/USAGE_KR.md)

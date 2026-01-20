@@ -26,6 +26,50 @@ openseal build --exec "node app.js" --output dist_opensealed
 openseal run --app dist_opensealed --port 3000
 ```
 
+---
+
+## 2. Quickstart by Language
+
+OpenSeal recommends executing verified source code directly (JIT). Here are copy-pasteable commands for each environment.
+
+### 🟢 Node.js (TypeScript)
+For **Source Code Integrity**, we recommend using `ts-node` instead of the compiled `dist`.
+```bash
+# Build
+openseal build --exec "npx ts-node src/index.ts" --output dist_opensealed
+
+# Execution
+cd dist_opensealed && npm install && cd ..
+openseal run --app dist_opensealed --port 3000
+```
+
+### 🟡 Python
+```bash
+# Build
+openseal build --exec "python main.py" --output dist_opensealed
+
+# Execution (Activate venv if needed)
+openseal run --app dist_opensealed --port 3000
+```
+
+### 🔵 Go
+```bash
+# Build
+openseal build --exec "go run main.go" --output dist_opensealed
+
+# Execution
+openseal run --app dist_opensealed --port 3000
+```
+
+### 🦀 Rust
+```bash
+# Build (target folder is automatically ignored)
+openseal build --exec "cargo run --release" --output dist_opensealed
+
+# Execution
+openseal run --app dist_opensealed --port 3000
+```
+
 ### Step 4: Verify (Optional - For Testing)
 ```bash
 # Verify the integrity of an API response

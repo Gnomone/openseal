@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 REPO="kjyyoung/openseal"
-VERSION="v0.1.0" # Hardcoded for now, or fetch latest
+VERSION="v0.1.1" # Hardcoded for now, or fetch latest
 BINARY_NAME="openseal-linux"
 DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/$BINARY_NAME"
 
