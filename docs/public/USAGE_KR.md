@@ -9,7 +9,7 @@ OpenSeal 서비스의 설정, 실행 및 안전한 관리 방법을 다룹니다
 ### 1단계: CLI 설치
 ```bash
 # 최신 바이너리를 다운로드하여 설치합니다.
-curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh | bash
+curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
 ```
 
 ### 2단계: 봉인 (Build)

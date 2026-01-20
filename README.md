@@ -7,7 +7,7 @@ Verify that your service code is untampered and mathematically proven to your cu
 ### 1. Install via Binary (Recommended)
 ```bash
 # Download and install the latest binary for your OS
-curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh | bash
+curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
 ```
 > **Note**: Source compilation via `cargo install` is no longer supported for public builds as core security logic is protected. Please use the binary release.
 

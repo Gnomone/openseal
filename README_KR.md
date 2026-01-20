@@ -7,7 +7,7 @@
 ### 1. 설치 (바이너리 권장)
 ```bash
 # 최신 바이너리를 다운로드하여 설치합니다.
-curl -L https://github.com/kjyyoung/openseal/releases/latest/download/install.sh | bash
+curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
 ```
 > **주의**: 핵심 보안 로직 보호를 위해 `cargo install`을 통한 소스 컴파일은 더 이상 지원하지 않습니다. 제공된 바이너리를 사용해 주세요.
 
