@@ -33,10 +33,14 @@ openseal run --app dist_opensealed --port 3000
 OpenSeal recommends executing verified source code directly (JIT). Here are copy-pasteable commands for each environment.
 
 ### 🟢 Node.js (TypeScript)
-For **Source Code Integrity**, we recommend using `ts-node` instead of the compiled `dist`.
+For **Source Code Integrity**, we recommend using `tsx` (or `ts-node`) instead of the compiled `dist`.
+*Note: For modern ESM projects, `tsx` is highly recommended for stability.*
 ```bash
 # Build
-openseal build --exec "npx ts-node src/index.ts" --output dist_opensealed
+openseal build --exec "npx tsx src/index.ts" --output dist_opensealed
+
+# Or register "dev": "tsx src/index.ts" in package.json and run:
+openseal build --exec "npm run dev" --output dist_opensealed
 
 # Execution
 cd dist_opensealed && npm install && cd ..

@@ -33,10 +33,14 @@ openseal run --app dist_opensealed --port 3000
 OpenSeal은 검증된 소스 코드를 직접 실행(JIT)하는 것을 권장합니다. 각 환경에 맞는 복사-붙여넣기 명령어입니다.
 
 ### 🟢 Node.js (TypeScript)
-빌드된 `dist` 대신 **소스 코드 무결성**을 위해 `ts-node` 사용을 권장합니다.
+빌드된 `dist` 대신 **소스 코드 무결성**을 위해 `tsx` (또는 `ts-node`) 사용을 권장합니다. 
+*참고: 최신 ESM 프로젝트의 경우 `tsx`가 더 안정적입니다.*
 ```bash
 # 빌드
-openseal build --exec "npx ts-node src/index.ts" --output dist_opensealed
+openseal build --exec "npx tsx src/index.ts" --output dist_opensealed
+
+# 또는 package.json에 "dev": "tsx src/index.ts" 등록 후:
+openseal build --exec "npm run dev" --output dist_opensealed
 
 # 실행
 cd dist_opensealed && npm install && cd ..
