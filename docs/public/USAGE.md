@@ -1,4 +1,4 @@
-# 🛠️ OpenSeal: Usage & Safety Guide
+# 🛠️ OpenSeal: Usage Guide
 
 This guide covers how to set up, execute, and safely manage your OpenSeal-protected services.
 
@@ -8,35 +8,22 @@ This guide covers how to set up, execute, and safely manage your OpenSeal-protec
 
 ### Step 1: Install CLI
 ```bash
-# Download and install the latest binary for your OS
 curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
 ```
 
 ### Step 2: Seal (Build)
 ```bash
 # Run at your project root
-# --exec: Specify the entry command (Required)
-# --deps: (Optional) Custom dependency folder to link (e.g., venv, libs)
-openseal build --exec "node app.js" --output dist_opensealed
+openseal build --exec "npm run dev" --output dist_opensealed
 ```
 
-### Step 3: Run (Sealing Active)
+### Step 3: Run
 ```bash
-# --app: Path to the sealed bundle
-# --port: Public port to expose
+# Foreground
 openseal run --app dist_opensealed --port 3000
-```
 
-### Step 3-1: Run in Background (Production)
-```bash
-# Run in daemon mode (background)
+# Or background (Production)
 openseal run --app dist_opensealed --port 3000 --daemon
-
-# View logs
-tail -f openseal.log
-
-# Stop the service
-pkill -f 'openseal run'
 ```
 
 > [!TIP]
@@ -44,141 +31,159 @@ pkill -f 'openseal run'
 
 ---
 
-## 💡 Recommended Setup by Language
-
-### 🟢 Node.js
-- **Standard**: If `node_modules` is at the root, it’s linked automatically.
-- **Example**:
-  ```bash
-  openseal build --exec "npm run dev" --output dist_opensealed
-  ```
-
-### 🟡 Python
-- **Standard**: Automatically detects `venv`, `.venv`, or `env`.
-- **Custom**: If your environment is named `my_env`:
-  ```bash
-  openseal build --exec "python main.py" --deps my_env --output dist_opensealed
-  ```
-
-### 🔵 Go / Rust
-- For compiled binaries, ensure the binary is included in the sealed bundle.
-- **Example**:
-  ```bash
-  openseal build --exec "./my_app" --output dist_opensealed
-  ```
-
----
-
-## 🛠️ Option Details
-
-| Option | Description | Note |
-| :--- | :--- | :--- |
-| `--exec` | The command to start your service inside the sealed environment. | e.g., `npm run dev`, `python app.py` |
-| `--deps` | Dependency path to exclude from A-Hash but link to the runtime. | Default auto-detects `node_modules`, `venv` |
-| `--output` | Directory for the sealed artifacts. | Recommended to use a separate folder |
-
-### 🔵 Standard Identity Endpoint
-Any service running with `openseal run` automatically exposes a standard audit endpoint at `/.openseal/identity`. This allows external tools like **HighStation** to verify code integrity in real-time without requiring any modifications to your application code.
-- **URL**: `http://your-service:port/.openseal/identity`
-- **Method**: `GET`
-- **Returns**: Current A-Hash (Code Identity) and runtime metadata.
-
----
-
 ## 2. Quickstart by Language
 
-OpenSeal recommends executing verified source code directly (JIT). Here are copy-pasteable commands for each environment.
+OpenSeal recommends executing verified source code directly (JIT).
 
-### 🟢 Node.js (TypeScript)
-For **Source Code Integrity**, we recommend using `tsx` (or `ts-node`) instead of the compiled `dist`.
-*Note: For modern ESM projects, `tsx` is highly recommended for stability.*
+### 🟢 Node.js / TypeScript
 ```bash
-# Build
-openseal build --exec "npx tsx src/index.ts" --output dist_opensealed
-
-# Or register "dev": "tsx src/index.ts" in package.json and run:
 openseal build --exec "npm run dev" --output dist_opensealed
-
-# Execution
-cd dist_opensealed && npm install && cd ..
 openseal run --app dist_opensealed --port 3000
 ```
+> 💡 **JIT Recommended**: Use `tsx` or `ts-node` to execute source directly
 
-### 🟡 Python
+### 🐍 Python
 ```bash
-# Build
 openseal build --exec "python main.py" --output dist_opensealed
-
-# Execution (Activate venv if needed)
-openseal run --app dist_opensealed --port 3000
+openseal run --app dist_opensealed --port 8000
 ```
+> 💡 **Virtual Env**: Automatically detects `venv`, `.venv`
 
 ### 🔵 Go
 ```bash
-# Build
-openseal build --exec "go run main.go" --output dist_opensealed
-
-# Execution
-openseal run --app dist_opensealed --port 3000
+go build -o app
+openseal build --exec "./app" --output dist_opensealed
+openseal run --app dist_opensealed --port 8080
 ```
 
 ### 🦀 Rust
 ```bash
-# Build (target folder is automatically ignored)
-openseal build --exec "cargo run --release" --output dist_opensealed
-
-# Execution
-openseal run --app dist_opensealed --port 3000
+cargo build --release
+openseal build --exec "./target/release/myapp" --output dist_opensealed
+openseal run --app dist_opensealed --port 8000
 ```
 
-### Step 4: Verify (Optional - For Testing)
+---
+
+## 3. Key Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--exec` | Command to start your service | `npm run dev`, `python app.py` |
+| `--output` | Directory for sealed artifacts | `dist_opensealed` |
+| `--daemon` | Run in background (Production) | - |
+
+---
+
+## 4. Standard Identity Endpoint
+
+All OpenSeal services automatically expose a `/.openseal/identity` endpoint.
+
 ```bash
-# Verify the integrity of an API response
-openseal verify --response result.json --wax "your-nonce-value" --root-hash "expected-a-hash"
+curl http://localhost:3000/.openseal/identity
 ```
 
-**`result.json` File Format:**
-The response file generated by OpenSeal runtime has the following structure:
+**Response**:
 ```json
 {
-  "result": { /* Actual API response data */ },
+  "service": "OpenSeal Runtime Identity",
+  "version": "0.2.6",
+  "identity": {
+    "a_hash": "14f38520...",
+    "file_count": 1630
+  },
+  "status": "sealed"
+}
+```
+
+This allows external tools like **HighStation** to verify code integrity in real-time without modifying your app.
+
+---
+
+## 5. Runtime Integrity Verification (v0.2.6+)
+
+OpenSeal Runtime automatically verifies the sealed bundle on startup.
+
+**How it works**:
+1. Scans `dist_opensealed/` and calculates Live Hash
+2. Compares with Expected Hash in `openseal.json`
+3. **If tampered → Runtime refuses to start**
+
+**Normal case**:
+```bash
+$ openseal run --app dist_opensealed --port 3000
+   ✅ Live A-hash: 14f38520...
+   ✅ Integrity Verified!
+   🚀 OpenSeal Running
+```
+
+**Tampered case**:
+```bash
+$ openseal run --app dist_opensealed --port 3000
+   🚨 INTEGRITY VIOLATION DETECTED
+   Expected: 14f38520...
+   Actual:   XXXXXXXX...
+   Error: Runtime aborted
+```
+
+---
+
+## 6. openseal verify (Verification Tool)
+
+Verify the integrity of API responses.
+
+```bash
+openseal verify --response result.json --wax "nonce" --root-hash "14f38520..."
+```
+
+**result.json format**:
+```json
+{
+  "result": { "symbol": "BTC", "price": "98500" },
   "openseal": {
-    "signature": "...",  // Cryptographic signature
-    "pub_key": "...",    // Public key for verification
-    "a_hash": "...",     // Code identity hash
-    "b_hash": "..."      // Result binding hash
+    "signature": "...",
+    "pub_key": "...",
+    "a_hash": "...",
+    "b_hash": "..."
   }
 }
 ```
 
-**What Gets Verified:**
-- ✅ **Signature**: Confirms `openseal.signature` is valid using `pub_key`
-- ✅ **Wax Match**: Ensures the Wax in the response matches the challenge sent
-- ✅ **Code Identity**: (if --root-hash provided) Verifies `a_hash` matches the expected code
-
-**When to use `verify`:**
-- Testing your sealed application locally before deployment
-- Auditing API responses to ensure they contain valid Seals
-- Debugging Seal generation issues
-
-**Note**: In production, verification is typically done by the client (consumer) using the open-source verifier, not by the provider.
+**Verification checks**:
+- ✅ **Signature**: Ed25519 signature validity
+- ✅ **Binding**: B-hash match
+- ✅ **Identity**: A-hash match (if --root-hash provided)
 
 ---
 
-## 2. Safety Guardrails
+## 7. Safety Guardrails
 
-OpenSeal prevents accidental sealing of unintended locations (like the home directory).
+OpenSeal prevents accidental sealing of unintended locations.
 
-### Project Detection
-The CLI checks for standard files (`package.json`, `Cargo.toml`, `.git`, etc.). If missing, it will request interactive confirmation:
-> `⚠️ WARNING: No standard project files detected. Proceed anyway? (y/N)`
+**Auto-detection**:
+- Checks for `package.json`, `Cargo.toml`, `.git`, etc.
+- Warns if no project files found
 
-### Best Practices
-- **Run at Root**: Always execute commands at the top-level directory of your source code.
-- **Verify Exclusions**: Use `.opensealignore` to exclude large, non-essential folders like `node_modules`.
+**Recommendations**:
+- ✅ Run at project root
+- ✅ Use `.opensealignore` to exclude unnecessary files
 
 ---
 
-## 3. Rules for Exclusion
-- **.opensealignore**: Completely excludes files from A-hash calculation (Code Privacy).
-- **.openseal_mutable**: Seals the file's existence, but allows its content to change (e.g., logs, local DB).
+## 8. Exclusion Rules
+
+**`.opensealignore`**:
+- Completely excluded from A-hash calculation
+- Example: `node_modules/`, `venv/`, `.git/`
+
+**`.openseal_mutable`**:
+- File presence sealed, content changes allowed
+- Example: `*.db`, `logs/`, `cache/`
+
+---
+
+## 📚 Additional Documentation
+
+- [Protocol Specification (PROTOCOL)](./PROTOCOL.md)
+- [Language Agnosticism (AGNOSTICISM)](./AGNOSTICISM.md)
+- [Security Policy (POLICY)](./POLICY.md)
