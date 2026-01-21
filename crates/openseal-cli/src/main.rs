@@ -312,6 +312,7 @@ async fn main() -> Result<()> {
                 .env("USER", std::env::var("USER").unwrap_or_default())
                 .env("TERM", std::env::var("TERM").unwrap_or_default())
                 .env("PWD", app.to_str().unwrap_or_default())
+                .env("TMPDIR", std::env::var("TMPDIR").unwrap_or_default()) // Needed for some build tools
                 .env("NODE_ENV", "production") 
                 .env("PYTHONDONTWRITEBYTECODE", "1")
                 .stdout(Stdio::inherit())
@@ -337,18 +338,8 @@ async fn main() -> Result<()> {
                 }
             }
 
-            println!("   🧹 Cleaning up child process...");
-            let _ = child.kill(); // Synchronous kill for std::process::Child
-            // Oh, we used std::process::Command. Wait, main is async.
-            // If we use tokio::process::Command, we can await kill.
-            // Let's check imports.
-            
-            // Currently using std::process::Command.
-            // Changing to tokio::process::Command is better for async.
-            // BUT for now, let's just use the current child.
-            // std::process::Child doesn't have kill().await. It has kill().
-             let _ = child.kill();
-             let _ = child.kill();
+            let _ = child.kill(); 
+            let _ = child.wait(); // Prevent zombie processes
         },
         Commands::Verify { response, wax, root_hash } => {
             println!("🔍 OpenSeal Verifier (Dev Mode)");
