@@ -5,7 +5,7 @@ set -e
 REPO="Gnomone/openseal"
 VERSION="v0.2.6" # Hardcoded for now, or fetch latest
 BINARY_NAME="openseal-linux"
-DOWNLOAD_URL="https://github.com/$REPO/raw/main/$BINARY_NAME"
+DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/$BINARY_NAME"
 
 echo "🔐 OpenSeal Installer"
 echo "   Target: $DOWNLOAD_URL"
