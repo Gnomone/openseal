@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 REPO="Gnomone/openseal"
-VERSION="v0.2.3" # Hardcoded for now, or fetch latest
+VERSION="v0.2.4" # Hardcoded for now, or fetch latest
 BINARY_NAME="openseal-linux"
 DOWNLOAD_URL="https://github.com/$REPO/raw/main/$BINARY_NAME"
 

@@ -51,6 +51,14 @@ enum Commands {
         /// Setup command override (if not using openseal.json)
         #[arg(long)]
         cmd: Option<String>,
+
+        /// Run in daemon mode (background)
+        #[arg(short, long)]
+        daemon: bool,
+
+        /// Log file for daemon mode
+        #[arg(long, default_value = "openseal.log")]
+        log_file: String,
     },
     /// Verify an OpenSeal response to check integrity (Dev Mode)
     Verify {
@@ -90,7 +98,7 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Build { source, output, exec, deps } => {
-            println!("OpenSeal Packaging System v0.2.3");
+            println!("OpenSeal Packaging System v0.2.4");
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 
@@ -283,8 +291,46 @@ async fn main() -> Result<()> {
 
             println!("   ✨ Build Complete! Artifacts in {:?}", output);
         },
-        Commands::Run { app, public_port, cmd } => {
-            println!("🚀 OpenSeal Runner v0.2.3");
+        Commands::Run { app, public_port, cmd, daemon, log_file } => {
+            // Daemon mode: re-execute self in background
+            if *daemon {
+                println!("🚀 Starting OpenSeal in daemon mode...");
+                println!("   Log file: {}", log_file);
+                
+                let current_exe = std::env::current_exe()?;
+                let mut args = vec![
+                    "run".to_string(),
+                    "--app".to_string(),
+                    app.to_str().unwrap().to_string(),
+                    "--port".to_string(),
+                    public_port.to_string(),
+                ];
+                
+                if let Some(c) = cmd {
+                    args.push("--cmd".to_string());
+                    args.push(c.clone());
+                }
+
+                let log_file_path = PathBuf::from(log_file);
+                let log_handle = fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&log_file_path)?;
+
+                Command::new(current_exe)
+                    .args(&args)
+                    .stdout(log_handle.try_clone()?)
+                    .stderr(log_handle)
+                    .spawn()
+                    .context("Failed to spawn daemon process")?;
+
+                println!("   ✅ OpenSeal daemon started");
+                println!("   📝 View logs: tail -f {}", log_file_path.display());
+                println!("   🛑 Stop: pkill -f 'openseal run'");
+                return Ok(());
+            }
+
+            println!("🚀 OpenSeal Runner v0.2.4");
             println!("   Bundle: {:?}", app);
 
             // 1. Validating Bundle
