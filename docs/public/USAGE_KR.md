@@ -6,9 +6,11 @@ OpenSeal 서비스의 설정, 실행 및 안전한 관리 방법을 다룹니다
 
 ## 1. 5분 퀵스타트
 
-### 1단계: CLI 설치
+### 1단계: CLI 설치 (v0.2.61+)
 ```bash
 curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
+hash -r
+openseal --version
 ```
 
 ### 2단계: 봉인 (Build)
@@ -17,12 +19,18 @@ curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh 
 openseal build --exec "npm run dev" --output dist_opensealed
 ```
 
+> [!TIP]
+> **v0.2.61 자동화**: `--output`으로 지정한 경로는 자동으로 `.opensealignore`에 추가되어 Hash 재현성을 보장합니다.
+
 ### 3단계: 실행
 ```bash
-# 포그라운드
+# 일반 실행 (자동 의존성 탐지)
 openseal run --app dist_opensealed --port 3000
 
-# 또는 백그라운드 (프로덕션)
+# 명시적 의존성 지정 (권장)
+openseal run --app dist_opensealed --port 3000 --dependency node_modules
+
+# 백그라운드 (자동 설치 지원)
 openseal run --app dist_opensealed --port 3000 --daemon
 ```
 

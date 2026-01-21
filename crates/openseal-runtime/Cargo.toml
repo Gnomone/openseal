@@ -1,6 +1,6 @@
 [package]
 name = "openseal-runtime"
-version = "0.2.6"
+version = "0.2.61"
 edition = "2021"
 
 [dependencies]
@@ -11,6 +11,7 @@ axum = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+atty = "0.2"
 clap = { workspace = true }
 rand = { workspace = true }
 hex = { workspace = true }

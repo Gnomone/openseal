@@ -14,6 +14,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use ed25519_dalek::{SigningKey, Signer};
 use anyhow::anyhow;
+use std::io::{self, Write};
+use std::process::Command;
 
 #[derive(Clone)]
 struct AppState {
@@ -22,7 +24,12 @@ struct AppState {
     signing_key: SigningKey,
 }
 
-pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathBuf) -> anyhow::Result<()> {
+pub async fn run_proxy_server(
+    port: u16, 
+    target_url: String, 
+    project_root: PathBuf,
+    dependency_hint: Option<String>,
+) -> anyhow::Result<()> {
     println!("🔐 OpenSeal Runtime v{} Starting...", env!("CARGO_PKG_VERSION"));
     println!("   Target App: {}", target_url);
     println!("   Project Root: {:?}", project_root);
@@ -85,6 +92,9 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
         println!("   ✅ Integrity Verified!");
     }
 
+    // 4. Dependency Management (v0.2.61+)
+    handle_dependencies(&project_root, dependency_hint).await?;
+
     // Generate a strictly ephemeral signing key for this runtime session (Mandatory in v2.0)
     let mut csprng = OsRng;
     let mut key_bytes = [0u8; 32];
@@ -112,6 +122,168 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn handle_dependencies(
+    project_root: &std::path::Path,
+    dependency_hint: Option<String>,
+) -> anyhow::Result<()> {
+    // 1. Explicit dependency specification
+    if let Some(dep_dir) = dependency_hint {
+        let dep_path = project_root.join(&dep_dir);
+        if dep_path.exists() && !dep_path.is_symlink() {
+            println!("   ✅ Using existing dependencies: {}/", dep_dir);
+            return Ok(());
+        } else {
+            eprintln!("   ⚠️  Specified dependency '{}' not found or is a symlink. Retrying with auto-detection...", dep_dir);
+        }
+    }
+
+    // 2. Auto-detection
+    let dep_info = detect_dependencies(project_root)?;
+
+    match dep_info {
+        Some(DepInfo::NodeJs { exists, .. }) if exists => {
+            println!("   ✅ Node.js dependencies found");
+            Ok(())
+        }
+        Some(DepInfo::Python { exists, .. }) if exists => {
+            println!("   ✅ Python dependencies found");
+            Ok(())
+        }
+        Some(dep_info) => {
+            // Case 3: Project detected but dependencies missing - Ask user or auto-install in daemon mode
+            prompt_and_install(project_root, dep_info).await
+        }
+        None => {
+            // println!("   ℹ️  No standard dependency patterns detected");
+            Ok(())
+        }
+    }
+}
+
+enum DepInfo {
+    NodeJs { exists: bool, package_json: std::path::PathBuf },
+    Python { exists: bool, requirements: std::path::PathBuf },
+}
+
+fn detect_dependencies(project_root: &std::path::Path) -> anyhow::Result<Option<DepInfo>> {
+    // Node.js
+    let package_json = project_root.join("package.json");
+    if package_json.exists() {
+        let node_modules = project_root.join("node_modules");
+        let exists = node_modules.exists() && !node_modules.is_symlink();
+        return Ok(Some(DepInfo::NodeJs { exists, package_json }));
+    }
+
+    // Python
+    let requirements = project_root.join("requirements.txt");
+    if requirements.exists() {
+        // venv or .venv
+        let venv = project_root.join("venv");
+        let dot_venv = project_root.join(".venv");
+        let exists = (venv.exists() && !venv.is_symlink()) || (dot_venv.exists() && !dot_venv.is_symlink());
+        return Ok(Some(DepInfo::Python { exists, requirements }));
+    }
+
+    Ok(None)
+}
+
+async fn prompt_and_install(
+    project_root: &std::path::Path,
+    dep_info: DepInfo,
+) -> anyhow::Result<()> {
+    // Check if we are in interactive mode or daemon
+    let is_atty = atty::is(atty::Stream::Stdin);
+    let is_non_interactive = std::env::var("OPENSEAL_NON_INTERACTIVE").unwrap_or_default() == "1";
+    let is_daemon = std::env::var("OPENSEAL_DAEMON").unwrap_or_default() == "1";
+
+    match dep_info {
+        DepInfo::NodeJs { .. } => {
+            if !is_atty || is_non_interactive || is_daemon {
+                 println!("   📦 Automatically installing Node.js dependencies (Non-interactive mode)...");
+                 return install_npm_dependencies(project_root);
+            }
+
+            println!("\n📦 Node.js project detected, but 'node_modules/' is missing or is just a symlink.");
+            print!("   Would you like to install dependencies now? (Y/n): ");
+            io::stdout().flush()?;
+            
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            
+            if input.trim().is_empty() || input.trim().to_lowercase().starts_with('y') {
+                install_npm_dependencies(project_root)
+            } else {
+                eprintln!("   ⚠️  Skipping installation. The application may fail to start.");
+                Ok(())
+            }
+        }
+        DepInfo::Python { .. } => {
+            if !is_atty || is_non_interactive || is_daemon {
+                 println!("   📦 Automatically installing Python dependencies (Non-interactive mode)...");
+                 return install_pip_dependencies(project_root);
+            }
+
+            println!("\n📦 Python project detected, but 'venv/' is missing or is just a symlink.");
+            print!("   Would you like to install dependencies now? (Y/n): ");
+            io::stdout().flush()?;
+            
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            
+            if input.trim().is_empty() || input.trim().to_lowercase().starts_with('y') {
+                install_pip_dependencies(project_root)
+            } else {
+                eprintln!("   ⚠️  Skipping installation. The application may fail to start.");
+                Ok(())
+            }
+        }
+    }
+}
+
+fn install_npm_dependencies(project_root: &std::path::Path) -> anyhow::Result<()> {
+    // Check if npm exists
+    if Command::new("npm").arg("--version").stdout(std::process::Stdio::null()).status().is_err() {
+        return Err(anyhow!("'npm' command not found. Please ensure Node.js is installed."));
+    }
+
+    println!("   ⚙️  Running 'npm install' in {:?}...", project_root);
+    let status = Command::new("npm")
+        .arg("install")
+        .arg("--no-fund")
+        .arg("--no-audit")
+        .current_dir(project_root)
+        .status()?;
+
+    if status.success() {
+        println!("   ✅ Node.js dependencies installed successfully.");
+        Ok(())
+    } else {
+        Err(anyhow!("'npm install' failed with status: {}", status))
+    }
+}
+
+fn install_pip_dependencies(project_root: &std::path::Path) -> anyhow::Result<()> {
+    // Check if pip/python exists
+    if Command::new("pip").arg("--version").stdout(std::process::Stdio::null()).status().is_err() {
+        return Err(anyhow!("'pip' command not found. Please ensure Python is installed."));
+    }
+
+    println!("   ⚙️  Running 'pip install -r requirements.txt' in {:?}...", project_root);
+    let status = Command::new("pip")
+        .arg("install")
+        .arg("-r")
+        .arg("requirements.txt")
+        .current_dir(project_root)
+        .status()?;
+
+    if status.success() {
+        println!("   ✅ Python dependencies installed successfully.");
+        Ok(())
+    } else {
+        Err(anyhow!("'pip install' failed with status: {}", status))
+    }
 }
 
 /// Handler for /.openseal/identity endpoint

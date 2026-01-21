@@ -55,6 +55,10 @@ enum Commands {
         #[arg(short, long)]
         daemon: bool,
 
+        /// Path to dependency directory (e.g., node_modules, venv)
+        #[arg(long)]
+        dependency: Option<String>,
+
         /// Log file for daemon mode
         #[arg(long, default_value = "openseal.log")]
         log_file: String,
@@ -117,6 +121,9 @@ async fn main() -> Result<()> {
 
             // 1. Ensure Configuration Files exist (Lazy Init)
             ensure_config_files(source)?;
+            if let Some(out_str) = output.to_str() {
+                add_output_to_ignore(source, out_str)?;
+            }
 
             // 1. Calculate Identity (Verification)
             println!("   Scanning and Sealing...");
@@ -300,7 +307,7 @@ async fn main() -> Result<()> {
 
             println!("   ✨ Build Complete! Artifacts in {:?}", output);
         },
-        Commands::Run { app, public_port, cmd, daemon, log_file } => {
+        Commands::Run { app, public_port, cmd, daemon, dependency, log_file } => {
             // Daemon mode: re-execute self in background
             if *daemon {
                 println!("🚀 Starting OpenSeal in daemon mode...");
@@ -318,6 +325,11 @@ async fn main() -> Result<()> {
                 if let Some(c) = cmd {
                     args.push("--cmd".to_string());
                     args.push(c.clone());
+                }
+
+                if let Some(dep) = dependency {
+                    args.push("--dependency".to_string());
+                    args.push(dep.clone());
                 }
 
                 let log_file_path = PathBuf::from(log_file);
@@ -409,7 +421,7 @@ async fn main() -> Result<()> {
             
             // Use tokio::select to handle both proxy and Ctrl+C
             tokio::select! {
-                res = run_proxy_server(*public_port, target_url, app.clone()) => {
+                res = run_proxy_server(*public_port, target_url, app.clone(), dependency.clone()) => {
                     if let Err(e) = res {
                          eprintln!("   ❌ Runtime Error: {}", e);
                     }
@@ -475,6 +487,28 @@ fn ensure_config_files(source: &Path) -> Result<()> {
         println!("   📝 Creating default .openseal_mutable...");
         fs::write(&mutable_path, "# OpenSeal Mutable Files\n# Add files whose presence is sealed but content can change\n# (e.g., local databases, logs)\n\n# *.db\n# logs/\n")?;
     }
+    Ok(())
+}
+
+fn add_output_to_ignore(source: &Path, output: &str) -> Result<()> {
+    let ignore_path = source.join(".opensealignore");
+    let content = fs::read_to_string(&ignore_path)?;
+    
+    let output_pattern = format!("{}/", output.trim_end_matches('/'));
+    
+    // Check if the output directory is already ignored
+    let already_ignored = content.lines().any(|l| {
+        let trimmed = l.trim();
+        trimmed == output_pattern || trimmed == output.trim_end_matches('/')
+    });
+
+    if !already_ignored {
+        println!("   🔧 Auto-patching .opensealignore: Adding output directory exclusion ({})", output_pattern);
+        let mut file = fs::OpenOptions::new().append(true).open(&ignore_path)?;
+        use std::io::Write;
+        writeln!(file, "\n# OpenSeal output (auto-added)\n{}", output_pattern)?;
+    }
+
     Ok(())
 }
 
