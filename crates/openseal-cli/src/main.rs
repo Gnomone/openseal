@@ -32,6 +32,11 @@ enum Commands {
         /// Entry command specific to this project (e.g. "node app.js")
         #[arg(long)]
         exec: Option<String>,
+
+        /// Explicit dependency folder to ghost/link (e.g. "node_modules", "venv")
+        /// If not provided, common patterns will be auto-detected.
+        #[arg(long)]
+        deps: Option<String>,
     },
     /// Run the seal-bundled application
     Run {
@@ -84,8 +89,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Build { source, output, exec } => {
-            println!("OpenSeal Packaging System v0.1.0");
+        Commands::Build { source, output, exec, deps } => {
+            println!("OpenSeal Packaging System v0.3.0");
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 
@@ -181,6 +186,64 @@ async fn main() -> Result<()> {
                 println!("   Entry Command Registered: {}", cmd);
             }
 
+            // 5. Dependency Ghosting (Automated Linking)
+            println!("   🔗 Ghosting Dependencies (Runtime-only Linking)...");
+            
+            // Collect candidates
+            let mut candidates = vec![];
+            if let Some(explicit_deps) = deps {
+                candidates.push(explicit_deps.clone());
+            } else {
+                // Auto-detect common patterns
+                candidates.extend(vec![
+                    "node_modules".to_string(),
+                    "venv".to_string(),
+                    ".venv".to_string(),
+                    "env".to_string(),
+                ]);
+            }
+
+            let mut linked_any = false;
+            for dep_name in candidates {
+                let dep_src = source.join(&dep_name);
+                if dep_src.exists() && dep_src.is_dir() {
+                    let dep_dest = output.join(&dep_name);
+                    
+                    // Create symbolic link (platform specific)
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::symlink;
+                        if let Err(e) = symlink(&dep_src, &dep_dest) {
+                            eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
+                        } else {
+                            println!("   ✅ Automatically ghosted: {}", dep_name);
+                            linked_any = true;
+                        }
+                    }
+
+                    #[cfg(windows)]
+                    {
+                        use std::os::windows::fs::symlink_dir;
+                        if let Err(e) = symlink_dir(&dep_src, &dep_dest) {
+                            eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
+                        } else {
+                            println!("   ✅ Automatically ghosted: {}", dep_name);
+                            linked_any = true;
+                        }
+                    }
+                    
+                    // Add to manifest for runtime awareness (optional but good for debugging)
+                    if linked_any && manifest.get("deps").is_none() {
+                         manifest["deps"] = serde_json::Value::String(dep_name);
+                    }
+                }
+            }
+
+            if !linked_any && deps.is_some() {
+                println!("   ⚠️  Warning: Explicitly requested deps folder {:?} not found.", deps.as_ref().unwrap());
+            }
+
+            // 6. Save Manifests
             // [AUTO-GEN] Write to Source (The Proclaimed Identity)
             let source_manifest_path = source.join("openseal.json");
             let source_file = fs::File::create(&source_manifest_path)?;
