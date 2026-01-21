@@ -227,28 +227,32 @@ async fn main() -> Result<()> {
             // println!("   🔌 Internal Port (Hidden): {}", internal_port);
             // println!("   🛠️  Service Command: {}", run_cmd);
 
-            // 4. Spawn Child Process
-            let parts: Vec<&str> = run_cmd.split_whitespace().collect();
-            if parts.is_empty() {
-                return Err(anyhow!("Empty command string"));
-            }
-            let program = parts[0];
-            let args = &parts[1..];
+            // 4. Spawn Child Process (Using shell for command string support & environment stability)
+            let mut cmd_builder = if cfg!(target_os = "windows") {
+                let mut c = Command::new("cmd");
+                c.arg("/C").arg(&run_cmd);
+                c
+            } else {
+                let mut c = Command::new("sh");
+                c.arg("-c").arg(&run_cmd);
+                c
+            };
 
             // println!("   ✨ Spawning Application (Sanitized Environment)...");
-            let mut child = Command::new(program)
-                .args(args)
+            let mut child = cmd_builder
                 .current_dir(app)
                 .env_clear() // 🛡️ Security: Clear all host environment variables
                 .env("PORT", internal_port.to_string())
                 .env("OPENSEAL_PORT", internal_port.to_string())
                 .env("PATH", std::env::var("PATH").unwrap_or_default()) // Essential for finding executables
-                .env("NODE_ENV", std::env::var("NODE_ENV").unwrap_or_else(|_| "production".to_string()))
-                .env("PYTHONDONTWRITEBYTECODE", "1") // 🛡️ Security: Prevent .pyc generation interfering with A-hash
+                .env("HOME", std::env::var("HOME").unwrap_or_default()) // Required by Node/NPM
+                .env("USER", std::env::var("USER").unwrap_or_default())
+                .env("NODE_ENV", "production") 
+                .env("PYTHONDONTWRITEBYTECODE", "1")
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .spawn()
-                .context("Failed to spawn application")?;
+                .context("Failed to spawn application. Make sure the command exists and dependencies are installed.")?;
 
             // Dynamic Port Polling (Security & Reliability)
             wait_for_port(internal_port, 10).await?;
