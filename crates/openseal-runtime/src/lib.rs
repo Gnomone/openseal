@@ -24,76 +24,58 @@ struct AppState {
     signing_key: SigningKey,
 }
 
+pub async fn prepare_runtime(
+    project_root: &PathBuf,
+    dependency_hint: Option<String>,
+) -> anyhow::Result<ProjectIdentity> {
+    println!("🔐 OpenSeal Runtime v{} Initializing...", env!("CARGO_PKG_VERSION"));
+    
+    // 1. Static Commitment: Compute A-hash at startup
+    let live_identity = compute_project_identity(&project_root)?;
+    
+    // 2. Load Expected Hash from openseal.json
+    let manifest_path = project_root.join("openseal.json");
+    if manifest_path.exists() {
+        let manifest_content = std::fs::read_to_string(&manifest_path)?;
+        let manifest: serde_json::Value = serde_json::from_str(&manifest_content)?;
+        
+        if let Some(expected_hash_array) = manifest["identity"]["root_hash"].as_array() {
+            let expected_hash_bytes: Vec<u8> = expected_hash_array
+                .iter()
+                .filter_map(|v| v.as_u64().map(|n| n as u8))
+                .collect();
+            
+            if live_identity.root_hash.as_bytes() != expected_hash_bytes.as_slice() {
+                eprintln!("\n🚨 ═══════════════════════════════════════════════════════════");
+                eprintln!("   CRITICAL: INTEGRITY VIOLATION DETECTED");
+                eprintln!("   ═══════════════════════════════════════════════════════════");
+                eprintln!("   The sealed bundle has been modified!");
+                eprintln!("   ");
+                eprintln!("   Expected Hash: {}", hex::encode(&expected_hash_bytes));
+                eprintln!("   Actual Hash:   {}", live_identity.root_hash.to_hex());
+                eprintln!("   ");
+                eprintln!("   This runtime will NOT start for security reasons.");
+                eprintln!("   Please rebuild with 'openseal build' to restore integrity.");
+                eprintln!("   ═══════════════════════════════════════════════════════════\n");
+                
+                return Err(anyhow!("Integrity violation detected - Runtime aborted"));
+            }
+            println!("   ✅ Integrity Verified!");
+        }
+    }
+
+    // 3. Dependency Management
+    handle_dependencies(project_root, dependency_hint).await?;
+    
+    Ok(live_identity)
+}
+
 pub async fn run_proxy_server(
     port: u16, 
     target_url: String, 
     project_root: PathBuf,
-    dependency_hint: Option<String>,
+    project_identity: ProjectIdentity,
 ) -> anyhow::Result<()> {
-    println!("🔐 OpenSeal Runtime v{} Starting...", env!("CARGO_PKG_VERSION"));
-    println!("   Target App: {}", target_url);
-    println!("   Project Root: {:?}", project_root);
-
-    // 1. Static Commitment: Compute A-hash at startup
-    println!("   Scanning project identity...");
-    let live_identity = compute_project_identity(&project_root)?;
-    println!("   ✅ Live A-hash: {}", live_identity.root_hash.to_hex());
-    println!("   📄 Files Sealed: {}", live_identity.file_count);
-    
-    // 2. Load Expected Hash from openseal.json
-    let manifest_path = project_root.join("openseal.json");
-    if !manifest_path.exists() {
-        eprintln!("\n⚠️  WARNING: openseal.json not found in project root");
-        eprintln!("   Integrity verification skipped.");
-        eprintln!("   This is acceptable for development, but NOT recommended for production.\n");
-    } else {
-        // Load and parse manifest
-        let manifest_content = match std::fs::read_to_string(&manifest_path) {
-            Ok(content) => content,
-            Err(e) => return Err(anyhow!("Failed to read openseal.json: {}", e)),
-        };
-        
-        let manifest: serde_json::Value = match serde_json::from_str(&manifest_content) {
-            Ok(m) => m,
-            Err(e) => return Err(anyhow!("Failed to parse openseal.json: {}", e)),
-        };
-        
-        // Extract expected hash
-        let expected_hash_array = manifest["identity"]["root_hash"]
-            .as_array()
-            .ok_or_else(|| anyhow!("Invalid openseal.json: missing identity.root_hash"))?;
-        
-        let expected_hash_bytes: Vec<u8> = expected_hash_array
-            .iter()
-            .filter_map(|v: &serde_json::Value| v.as_u64().map(|n| n as u8))
-            .collect();
-        
-        if expected_hash_bytes.len() != 32 {
-            return Err(anyhow!("Invalid hash length in openseal.json: expected 32 bytes, got {}", expected_hash_bytes.len()));
-        }
-        
-        // 3. Verify Integrity
-        if live_identity.root_hash.as_bytes() != expected_hash_bytes.as_slice() {
-            eprintln!("\n🚨 ═══════════════════════════════════════════════════════════");
-            eprintln!("   CRITICAL: INTEGRITY VIOLATION DETECTED");
-            eprintln!("   ═══════════════════════════════════════════════════════════");
-            eprintln!("   The sealed bundle has been modified!");
-            eprintln!("   ");
-            eprintln!("   Expected Hash: {}", hex::encode(&expected_hash_bytes));
-            eprintln!("   Actual Hash:   {}", live_identity.root_hash.to_hex());
-            eprintln!("   ");
-            eprintln!("   This runtime will NOT start for security reasons.");
-            eprintln!("   Please rebuild with 'openseal build' to restore integrity.");
-            eprintln!("   ═══════════════════════════════════════════════════════════\n");
-            
-            return Err(anyhow!("Integrity violation detected - Runtime aborted"));
-        }
-        
-        println!("   ✅ Integrity Verified!");
-    }
-
-    // 4. Dependency Management (v0.2.61+)
-    handle_dependencies(&project_root, dependency_hint).await?;
 
     // Generate a strictly ephemeral signing key for this runtime session (Mandatory in v2.0)
     let mut csprng = OsRng;
@@ -105,7 +87,7 @@ pub async fn run_proxy_server(
 
     let state = Arc::new(AppState {
         target_url,
-        project_identity: live_identity,
+        project_identity,
         signing_key: key,
     });
 

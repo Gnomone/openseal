@@ -5,7 +5,7 @@ use ignore::WalkBuilder;
 use anyhow::{Result, Context, anyhow};
 use std::process::{Command, Stdio};
 use tokio::net::TcpListener;
-use openseal_runtime::run_proxy_server;
+use openseal_runtime::{run_proxy_server, prepare_runtime};
 use std::time::{Duration, Instant};
 use std::net::TcpStream;
 
@@ -354,7 +354,13 @@ async fn main() -> Result<()> {
             println!("🚀 OpenSeal Runner v{}", env!("CARGO_PKG_VERSION"));
             println!("   Bundle: {:?}", app);
 
-            // 1. Validating Bundle
+            // 1. Prepare Runtime (Integrity Check & Dependency Management)
+            // This MUST happen before spawning the app
+            let project_identity = prepare_runtime(app, dependency.clone()).await?;
+            println!("   ✅ Live A-hash: {}", project_identity.root_hash.to_hex());
+            println!("   📄 Files Sealed: {}", project_identity.file_count);
+
+            // 2. Validating Bundle for exec command
             let manifest_path = app.join("openseal.json");
             if !manifest_path.exists() {
                 return Err(anyhow!("Invalid OpenSeal Bundle: openseal.json not found in {:?}", app));
@@ -421,7 +427,7 @@ async fn main() -> Result<()> {
             
             // Use tokio::select to handle both proxy and Ctrl+C
             tokio::select! {
-                res = run_proxy_server(*public_port, target_url, app.clone(), dependency.clone()) => {
+                res = run_proxy_server(*public_port, target_url, app.clone(), project_identity) => {
                     if let Err(e) = res {
                          eprintln!("   ❌ Runtime Error: {}", e);
                     }
