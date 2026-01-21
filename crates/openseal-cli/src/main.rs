@@ -255,7 +255,11 @@ async fn main() -> Result<()> {
                         if dep_dest.exists() || dep_dest.is_symlink() {
                             let _ = fs::remove_file(&dep_dest);
                         }
-                        if let Err(e) = symlink(&dep_src, &dep_dest) {
+                        
+                        // Use absolute path for target to avoid recursive symlink in child directory
+                        let src_abs = fs::canonicalize(&dep_src).context(format!("Failed to resolve absolute path for {:?}", dep_src))?;
+
+                        if let Err(e) = symlink(&src_abs, &dep_dest) {
                             eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
                         } else {
                             println!("   ✅ Automatically ghosted: {}", dep_name);
@@ -271,7 +275,10 @@ async fn main() -> Result<()> {
                         if dep_dest.exists() || dep_dest.is_symlink() {
                             let _ = fs::remove_file(&dep_dest);
                         }
-                        if let Err(e) = symlink_dir(&dep_src, &dep_dest) {
+
+                        let src_abs = fs::canonicalize(&dep_src).context(format!("Failed to resolve absolute path for {:?}", dep_src))?;
+
+                        if let Err(e) = symlink_dir(&src_abs, &dep_dest) {
                             eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
                         } else {
                             println!("   ✅ Automatically ghosted: {}", dep_name);

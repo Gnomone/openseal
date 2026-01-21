@@ -111,5 +111,25 @@ openseal verify --response result.json --wax "난수값" --root-hash "예상-A-h
 
 ---
 
-## 3. 향후 발전 계획 (Future Evolution)
+## 4. 주의사항 및 한계점 (Caveats & Limitations)
+
+개발 및 유지보수 시 반드시 숙지해야 할 핵심 제약 사항입니다.
+
+### 4.1 Hash 재현성 (Reproducibility)
+- **증상**: 동일한 코드임에도 빌드할 때마다 Root Hash가 변함.
+- **원인**: 출력 디렉토리(`dist_opensealed/` 등)가 `.opensealignore`에 누락되어 하이퍼-해싱(재귀적 해싱)이 발생함.
+- **대응**: v0.2.61부터 CLI가 빌드 시 출력 디렉토리를 자동으로 패치함. 수동 관리 시 반드시 확인 필요.
+
+### 4.2 의존성 관리 (Dependency Management)
+- **현재 지원**: Node.js(npm), Python(pip)에 대한 자동 탐지 및 설치 지원.
+- **확장성**: Go, Rust 등 컴파일 언어는 현재 자동 실치 대상에서 제외되어 있음. 필요 시 `run_proxy_server` 및 `prepare_runtime` 로직 확장 필요.
+- **Ghosting 한계**: 심볼릭 링크 방식의 의존성 처리는 일부 언어의 모듈 로더에서 보안 상의 이유로 거부될 수 있음. 이 경우 `--dependency` 옵션으로 실제 디렉토리 경로를 주입하거나 런타임 레이어에서 직접 설치(`npm install`) 유도.
+
+### 4.3 실행 순서 (Execution Pipeline)
+- **핵심 원칙**: **[무결성 검증 + 의존성 설치] → [애플리케이션 스폰(Spawn)]** 순서를 엄격히 준수해야 함.
+- **주의**: 앱을 먼저 실행하고 의존성을 체크할 경우, 의존성 부재로 앱이 뜨지 않을 때 타임아웃 에러만 발생하여 원인 파악이 불가능해짐.
+
+---
+
+## 5. 향후 발전 계획 (Future Evolution)
 - **Instruction-level Polymorphism**: A-hash 값에 따라 연산 순서 자체가 실제 기계어 수준에서 바뀌는 VM 기반 난독화 엔진 도입 예정.

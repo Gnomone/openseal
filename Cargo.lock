@@ -1004,7 +1004,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "openseal"
-version = "0.2.61"
+version = "0.2.62"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1021,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "openseal-core"
-version = "0.2.61"
+version = "0.2.62"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1038,7 +1038,7 @@ dependencies = [
 
 [[package]]
 name = "openseal-runtime"
-version = "0.2.61"
+version = "0.2.62"
 dependencies = [
  "anyhow",
  "atty",

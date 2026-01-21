@@ -508,6 +508,15 @@ $ openseal run --app dist_opensealed --port 1999
 - Ghosting 로직 개선
 - Symlink 안전성 강화
 
+### v0.2.61 (2026-01-22)
+- .opensealignore 자동 패치 (Hash 재현성 자동화)
+- 런타임 의존성 관리 레이어 도입 (prepare_runtime)
+- 실행 순서 최적화: [검증/의존성] -> [앱 실행]
+
+### v0.2.62 (2026-01-22)
+- 심볼릭 링크 절대 경로화 (재귀적 링크 버그 수정)
+- `is_dir()` 의존성 체크 로직 안정화
+
 ---
 
 **작성자**: OpenSeal Development Team  
