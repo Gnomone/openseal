@@ -130,7 +130,7 @@ async fn main() -> Result<()> {
             
             // Ghosting candidate detection (for runtime linking, NOT for hash exclusion)
             // Hash exclusion is handled by .opensealignore only
-            let ghost_candidates: Vec<&str> = if let Some(d) = deps.as_ref() {
+            let _ghost_candidates: Vec<&str> = if let Some(d) = deps.as_ref() {
                 vec![d.as_str()]
             } else {
                 vec!["node_modules", "venv", ".venv", "env", "target"]

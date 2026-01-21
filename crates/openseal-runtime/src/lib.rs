@@ -73,7 +73,7 @@ pub async fn prepare_runtime(
 pub async fn run_proxy_server(
     port: u16, 
     target_url: String, 
-    project_root: PathBuf,
+    _project_root: PathBuf,
     project_identity: ProjectIdentity,
 ) -> anyhow::Result<()> {
 
@@ -113,11 +113,13 @@ async fn handle_dependencies(
     // 1. Explicit dependency specification
     if let Some(dep_dir) = dependency_hint {
         let dep_path = project_root.join(&dep_dir);
-        if dep_path.exists() && !dep_path.is_symlink() {
+        // Use is_dir() which follows symlinks. 
+        // If the user explicitly provided this, we trust that the symlink/dir is "well-present".
+        if dep_path.is_dir() {
             println!("   ✅ Using existing dependencies: {}/", dep_dir);
             return Ok(());
         } else {
-            eprintln!("   ⚠️  Specified dependency '{}' not found or is a symlink. Retrying with auto-detection...", dep_dir);
+            eprintln!("   ⚠️  Specified dependency '{}' not found or is not a directory. Retrying with auto-detection...", dep_dir);
         }
     }
 
@@ -145,8 +147,8 @@ async fn handle_dependencies(
 }
 
 enum DepInfo {
-    NodeJs { exists: bool, package_json: std::path::PathBuf },
-    Python { exists: bool, requirements: std::path::PathBuf },
+    NodeJs { exists: bool, _package_json: std::path::PathBuf },
+    Python { exists: bool, _requirements: std::path::PathBuf },
 }
 
 fn detect_dependencies(project_root: &std::path::Path) -> anyhow::Result<Option<DepInfo>> {
@@ -155,7 +157,7 @@ fn detect_dependencies(project_root: &std::path::Path) -> anyhow::Result<Option<
     if package_json.exists() {
         let node_modules = project_root.join("node_modules");
         let exists = node_modules.exists() && !node_modules.is_symlink();
-        return Ok(Some(DepInfo::NodeJs { exists, package_json }));
+        return Ok(Some(DepInfo::NodeJs { exists, _package_json: package_json }));
     }
 
     // Python
@@ -165,7 +167,7 @@ fn detect_dependencies(project_root: &std::path::Path) -> anyhow::Result<Option<
         let venv = project_root.join("venv");
         let dot_venv = project_root.join(".venv");
         let exists = (venv.exists() && !venv.is_symlink()) || (dot_venv.exists() && !dot_venv.is_symlink());
-        return Ok(Some(DepInfo::Python { exists, requirements }));
+        return Ok(Some(DepInfo::Python { exists, _requirements: requirements }));
     }
 
     Ok(None)
