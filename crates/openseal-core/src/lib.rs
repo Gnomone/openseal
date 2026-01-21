@@ -31,8 +31,10 @@ pub fn compute_project_identity_excluding(
     
     let walker = WalkBuilder::new(root_path)
         .hidden(false)
-        .git_ignore(true)
-        .add_custom_ignore_filename(".opensealignore")
+        .git_ignore(false)  // Do NOT use .gitignore - it's project-specific, not OpenSeal's concern
+        .git_global(false)  // Ignore global git config
+        .git_exclude(false) // Ignore git exclude
+        .add_custom_ignore_filename(".opensealignore")  // OpenSeal's own ignore file
         .filter_entry(move |entry| {
             // Skip directories that are in the exclude list
             if let Some(file_type) = entry.file_type() {
