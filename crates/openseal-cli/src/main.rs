@@ -307,9 +307,11 @@ async fn main() -> Result<()> {
                 .env_clear() // 🛡️ Security: Clear all host environment variables
                 .env("PORT", internal_port.to_string())
                 .env("OPENSEAL_PORT", internal_port.to_string())
-                .env("PATH", std::env::var("PATH").unwrap_or_default()) // Essential for finding executables
-                .env("HOME", std::env::var("HOME").unwrap_or_default()) // Required by Node/NPM
+                .env("PATH", std::env::var("PATH").unwrap_or_default()) 
+                .env("HOME", std::env::var("HOME").unwrap_or_default())
                 .env("USER", std::env::var("USER").unwrap_or_default())
+                .env("TERM", std::env::var("TERM").unwrap_or_default())
+                .env("PWD", app.to_str().unwrap_or_default())
                 .env("NODE_ENV", "production") 
                 .env("PYTHONDONTWRITEBYTECODE", "1")
                 .stdout(Stdio::inherit())
@@ -318,7 +320,7 @@ async fn main() -> Result<()> {
                 .context("Failed to spawn application. Make sure the command exists and dependencies are installed.")?;
 
             // Dynamic Port Polling (Security & Reliability)
-            wait_for_port(internal_port, 10).await?;
+            wait_for_port(internal_port, 30).await?;
 
             // 5. Start Runtime Proxy with Graceful Shutdown
             let target_url = format!("http://127.0.0.1:{}", internal_port);
