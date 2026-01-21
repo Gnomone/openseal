@@ -17,12 +17,35 @@ pub struct ProjectIdentity {
     pub mutable_files: Vec<String>,
 }
 
-/// Scans a directory and computes its Merkle Root hash.
-pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
+
+/// Scans a directory and computes its Merkle Root hash, excluding specified directories.
+/// This implements the Standard Exclusion Rules from AGNOSTICISM.md to extract "Pure Logic".
+pub fn compute_project_identity_excluding(
+    root_path: &Path,
+    exclude_dirs: &[&str]
+) -> Result<ProjectIdentity> {
+    use std::collections::HashSet;
+    
+    // Convert to owned Strings to satisfy 'static lifetime requirement of filter_entry closure
+    let exclude_set: HashSet<String> = exclude_dirs.iter().map(|s| s.to_string()).collect();
+    
     let walker = WalkBuilder::new(root_path)
         .hidden(false)
         .git_ignore(true)
         .add_custom_ignore_filename(".opensealignore")
+        .filter_entry(move |entry| {
+            // Skip directories that are in the exclude list
+            if let Some(file_type) = entry.file_type() {
+                if file_type.is_dir() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        if exclude_set.contains(name) {
+                            return false; // Skip this directory and all its contents
+                        }
+                    }
+                }
+            }
+            true
+        })
         .build();
 
     // Load mutable file patterns from .openseal_mutable if exists
@@ -81,6 +104,11 @@ pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
         file_count: file_paths.len(),
         mutable_files: mutable_files_found,
     })
+}
+
+/// Scans a directory and computes its Merkle Root hash (backwards compatible wrapper).
+pub fn compute_project_identity(root_path: &Path) -> Result<ProjectIdentity> {
+    compute_project_identity_excluding(root_path, &[])
 }
 
 /// SECURITY: Enforce blacklist on mutable files to prevent Backdoor Injection.

@@ -11,6 +11,7 @@
 !/LICENSE
 !/install.sh
 !/openseal-linux
+!/openseal.json          # Allow for HighStation Truth Hash extraction
 !/Cargo.toml
 !/Cargo.lock
 !/scripts/

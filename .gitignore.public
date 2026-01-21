@@ -1,40 +1,57 @@
 # ============================================
-# Layer D: Protected Core (NEVER COMMIT)
+# OpenSeal Whitelist Gitignore (Harden Mode)
 # ============================================
+
+# 1. Ignore everything by default
+/*
+!/.gitignore
+!/.gitignore.*
+!/README.md
+!/README_KR.md
+!/LICENSE
+!/install.sh
+!/openseal-linux
+!/Cargo.toml
+!/Cargo.lock
+!/scripts/
+!/crates/
+!/docs/
+
+# 2. Refine folders: Ignore everything inside them first
+/scripts/*
+/crates/*
+/docs/*
+
+# 3. Allow only public/official files in folders
+!/scripts/push-private.sh
+
+!/docs/public/
+!/docs/public/**
+
+!/crates/openseal-cli/
+!/crates/openseal-cli/**
+
+!/crates/openseal-runtime/
+!/crates/openseal-runtime/**
+
+!/crates/openseal-core/
+!/crates/openseal-core/**
+
+# 4. Explicitly BLOCK sensitive folders inside allowed ones (Extra Safety)
+# This acts as a secondary shield
 crates/openseal-secret/
 docs/internal/
-
-# ============================================
-# Sensitive Data & Credentials
-# ============================================
+docs/archive/
+.archive/
 .env*
 *.key
 *.pem
 *.secret
-.archive/
-.history.md
 
-# ============================================
-# Build Artifacts
-# ============================================
+# 5. Build Artifacts
 target/
 dist/
 build/
 **/*.rs.bk
-
-# ============================================
-# Temporary & Test Files
-# ============================================
-tmp*/
-test_env_*/
 *.log
-*.swp
-*.tmp
-verify_openseal.sh
-
-# ============================================
-# IDE & System
-# ============================================
-.vscode/
-.idea/
 .DS_Store

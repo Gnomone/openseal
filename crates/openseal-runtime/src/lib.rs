@@ -22,7 +22,7 @@ struct AppState {
 }
 
 pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathBuf) -> anyhow::Result<()> {
-    println!("🔐 OpenSeal Runtime v0.2.0 Starting...");
+    println!("🔐 OpenSeal Runtime v{} Starting...", env!("CARGO_PKG_VERSION"));
     println!("   Target App: {}", target_url);
     println!("   Project Root: {:?}", project_root);
 

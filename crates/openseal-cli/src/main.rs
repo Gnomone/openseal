@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use openseal_core::compute_project_identity;
 use std::path::{Path, PathBuf};
 use std::fs;
 use ignore::WalkBuilder;
@@ -98,7 +97,7 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Build { source, output, exec, deps } => {
-            println!("OpenSeal Packaging System v0.2.4");
+            println!("OpenSeal Packaging System v{}", env!("CARGO_PKG_VERSION"));
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 
@@ -119,9 +118,17 @@ async fn main() -> Result<()> {
             // 1. Ensure Configuration Files exist (Lazy Init)
             ensure_config_files(source)?;
 
-            // 1. Calculate Identity (Verification)
+            // 1. Calculate Identity (Verification) - EXCLUDING ghosted dependencies
             println!("   Scanning and Sealing...");
-            let identity = compute_project_identity(source)?;
+            
+            // Determine which folders to exclude from hash calculation (AGNOSTICISM.md: Standard Exclusion Rules)
+            let ghost_candidates: Vec<&str> = if let Some(d) = deps.as_ref() {
+                vec![d.as_str()]
+            } else {
+                vec!["node_modules", "venv", ".venv", "env", "target"]
+            };
+            
+            let identity = openseal_core::compute_project_identity_excluding(source, &ghost_candidates)?;
             println!("   ✅ Root A-Hash: {}", identity.root_hash.to_hex());
             println!("   Files Indexed: {}", identity.file_count);
 
@@ -330,7 +337,7 @@ async fn main() -> Result<()> {
                 return Ok(());
             }
 
-            println!("🚀 OpenSeal Runner v0.2.4");
+            println!("🚀 OpenSeal Runner v{}", env!("CARGO_PKG_VERSION"));
             println!("   Bundle: {:?}", app);
 
             // 1. Validating Bundle
