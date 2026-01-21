@@ -258,7 +258,7 @@ async fn main() -> Result<()> {
             println!("   ✨ Build Complete! Artifacts in {:?}", output);
         },
         Commands::Run { app, public_port, cmd } => {
-            println!("🚀 OpenSeal Runner v0.2.0");
+            println!("🚀 OpenSeal Runner v0.2.2");
             println!("   Bundle: {:?}", app);
 
             // 1. Validating Bundle
