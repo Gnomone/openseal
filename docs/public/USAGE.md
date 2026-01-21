@@ -27,6 +27,21 @@ openseal build --exec "node app.js" --output dist_opensealed
 openseal run --app dist_opensealed --port 3000
 ```
 
+### Step 3-1: Run in Background (Production)
+```bash
+# Run in daemon mode (background)
+openseal run --app dist_opensealed --port 3000 --daemon
+
+# View logs
+tail -f openseal.log
+
+# Stop the service
+pkill -f 'openseal run'
+```
+
+> [!TIP]
+> Use `--daemon` flag to keep the service running even after SSH disconnection.
+
 ---
 
 ## 💡 Recommended Setup by Language

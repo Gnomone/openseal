@@ -27,6 +27,21 @@ openseal build --exec "node app.js" --output dist_opensealed
 openseal run --app dist_opensealed --port 3000
 ```
 
+### 3-1단계: 백그라운드 실행 (프로덕션)
+```bash
+# 데몬 모드로 실행 (백그라운드)
+openseal run --app dist_opensealed --port 3000 --daemon
+
+# 로그 확인
+tail -f openseal.log
+
+# 중지
+pkill -f 'openseal run'
+```
+
+> [!TIP]
+> `--daemon` 플래그를 사용하면 SSH 연결이 끊겨도 서비스가 계속 실행됩니다.
+
 ---
 
 ## 💡 언어별 권장 설정
