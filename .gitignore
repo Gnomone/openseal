@@ -1,58 +1,36 @@
 # ============================================
-# OpenSeal Whitelist Gitignore (Harden Mode)
+# PRIVATE BACKUP REPOSITORY - Minimal Exclusions
 # ============================================
+# This is for backup purposes - only exclude truly sensitive data
 
-# 1. Ignore everything by default
-/*
-!/.gitignore
-!/.gitignore.*
-!/README.md
-!/README_KR.md
-!/LICENSE
-!/install.sh
-!/openseal-linux
-!/openseal.json          # Allow for HighStation Truth Hash extraction
-!/Cargo.toml
-!/Cargo.lock
-!/scripts/
-!/crates/
-!/docs/
-
-# 2. Refine folders: Ignore everything inside them first
-/scripts/*
-/crates/*
-/docs/*
-
-# 3. Allow only public/official files in folders
-!/scripts/push-private.sh
-
-!/docs/public/
-!/docs/public/**
-
-!/crates/openseal-cli/
-!/crates/openseal-cli/**
-
-!/crates/openseal-runtime/
-!/crates/openseal-runtime/**
-
-!/crates/openseal-core/
-!/crates/openseal-core/**
-
-# 4. Explicitly BLOCK sensitive folders inside allowed ones (Extra Safety)
-# This acts as a secondary shield
-crates/openseal-secret/
-docs/internal/
-docs/archive/
-.archive/
-.env*
+# ============================================
+# Critical Security (ABSOLUTELY NEVER COMMIT)
+# ============================================
 *.key
 *.pem
 *.secret
+.env.production
+.env.secrets
 
-# 5. Build Artifacts
+# ============================================
+# Build Artifacts (Can be regenerated)
+# ============================================
 target/
-dist/
-build/
-**/*.rs.bk
-*.log
+openseal-linux
+*.rs.bk
+
+# ============================================
+# Temporary Files Only
+# ============================================
+*.swp
+*.tmp
 .DS_Store
+
+# ============================================
+# Note: Unlike public repo, we KEEP:
+# - .history.md (for internal tracking)
+# - docs/internal/ (internal documentation)
+# - .archive/ (historical backups)
+# - *.log files (debugging records)
+# - .env* (except production secrets)
+# ============================================
