@@ -26,6 +26,12 @@ openseal build --exec "node app.js" --output dist_opensealed
 openseal run --app dist_opensealed --port 3000
 ```
 
+### 🔵 Standard Identity Endpoint
+Any service running with `openseal run` automatically exposes a standard audit endpoint at `/.openseal/identity`. This allows external tools like **HighStation** to verify code integrity in real-time without requiring any modifications to your application code.
+- **URL**: `http://your-service:port/.openseal/identity`
+- **Method**: `GET`
+- **Returns**: Current A-Hash (Code Identity) and runtime metadata.
+
 ---
 
 ## 2. Quickstart by Language

@@ -26,6 +26,12 @@ openseal build --exec "node app.js" --output dist_opensealed
 openseal run --app dist_opensealed --port 3000
 ```
 
+### 🔵 표준 정체성 엔드포인트 (Standard Identity Endpoint)
+`openseal run`으로 실행되는 모든 서비스는 자동으로 `/.openseal/identity` 경로에 표준 감사 엔드포인트를 노출합니다. 이를 통해 **HighStation**과 같은 외부 도구가 앱의 코드 수정 없이도 실시간으로 코드 무결성(A-Hash)을 검증할 수 있습니다.
+- **경로**: `/.openseal/identity`
+- **방식**: `GET`
+- **결과**: 현재 코드의 A-Hash 및 런타임 메타데이터 반환.
+
 ---
 
 ## 2. 언어별 퀵스타트 (Quickstart by Language)
