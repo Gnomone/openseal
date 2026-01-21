@@ -1,13 +1,12 @@
 use clap::{Parser, Subcommand};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
-use ignore::WalkBuilder;
-use anyhow::{Result, Context, anyhow};
-use std::process::{Command, Stdio};
-use tokio::net::TcpListener;
-use openseal_runtime::{run_proxy_server, prepare_runtime};
-use std::time::{Duration, Instant};
-use std::net::TcpStream;
+use anyhow::{Result, anyhow, Context};
+use std::process::Command;
+use hex;
+use ed25519_dalek::{VerifyingKey, Signature, Verifier};
+use std::convert::TryInto;
+use serde_json;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -18,530 +17,392 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Build and package the project (Seal Source Code)
+    /// Build OpenSeal Identity from Docker Image
     Build {
-        /// Source directory to seal
-        #[arg(short, long, default_value = ".")]
-        source: PathBuf,
-
-        /// Output Bundle Directory
-        #[arg(short, long, default_value = "./dist")]
-        output: PathBuf,
-
-        /// Entry command specific to this project (e.g. "node app.js")
-        #[arg(long)]
-        exec: Option<String>,
-
-        /// Explicit dependency folder to ghost/link (e.g. "node_modules", "venv")
-        /// If not provided, common patterns will be auto-detected.
-        #[arg(long)]
-        deps: Option<String>,
+        /// Docker image (must include digest: user/api@sha256:...)
+        #[arg(short, long)]
+        image: String,
     },
-    /// Run the seal-bundled application
+    /// Run the OpenSeal-wrapped container
     Run {
-        /// Path to the sealed project directory (Bundle)
-        #[arg(long, default_value = ".")]
-        app: PathBuf,
-
-        /// Port to expose to the public (OpenSeal Proxy)
-        #[arg(short, long, default_value = "7325", alias = "port")]
-        public_port: u16,
-
-        /// Setup command override (if not using openseal.json)
-        #[arg(long)]
-        cmd: Option<String>,
-
-        /// Run in daemon mode (background)
+        /// Docker image to run (with digest)
         #[arg(short, long)]
-        daemon: bool,
+        image: String,
 
-        /// Path to dependency directory (e.g., node_modules, venv)
+        /// Port to expose (OpenSeal Proxy)
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+
+        /// Allow network access to specific domains
         #[arg(long)]
-        dependency: Option<String>,
-
-        /// Log file for daemon mode
-        #[arg(long, default_value = "openseal.log")]
-        log_file: String,
+        allow_network: Vec<String>,
     },
-    /// Verify an OpenSeal response to check integrity (Dev Mode)
+    /// Verify a sealed response
     Verify {
-        /// Path to the API response JSON file
-        #[arg(short, long)]
-        response: PathBuf,
+        /// JSON response file path
+        #[arg(long, short)]
+        response: String,
 
-        /// Wax (Challenge) string used for the request
-        #[arg(short, long)]
+        /// Wax challenge string used for the request
+        #[arg(long, short)]
         wax: String,
 
-        /// (Optional) Expected Root Hash (A-hash seed) to verify identity
+        /// Optional: Expected Root Hash (Image Digest)
         #[arg(long)]
         root_hash: Option<String>,
-    }
-}
-
-/// Waits for the given port to become available (app is ready)
-async fn wait_for_port(port: u16, timeout_secs: u64) -> Result<()> {
-    let start = Instant::now();
-    let addr = format!("127.0.0.1:{}", port);
-    // Internal logs hidden as requested
-    
-    while start.elapsed().as_secs() < timeout_secs {
-        if TcpStream::connect(&addr).is_ok() {
-            // println!("   Internal app is READY (detected in {:?})", start.elapsed());
-            return Ok(());
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
-    Err(anyhow!("Timeout: Internal app failed to bind to port {} within {}s", port, timeout_secs))
+    },
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    match &cli.command {
-        Commands::Build { source, output, exec, deps } => {
-            println!("OpenSeal Packaging System v{}", env!("CARGO_PKG_VERSION"));
-            println!("   Source: {:?}", source);
-            println!("   Output: {:?}", output);
+    match cli.command {
+        Commands::Build { image } => {
+            println!("🐳 OpenSeal v1.0.0-alpha.1: Docker-Based Identity Builder");
+            println!("   Image: {}", image);
 
-            // 0. Safety Guardrail: Project Detection
-            if !is_project_root(source) {
-                println!("   ⚠️  WARNING: No standard project files (package.json, Cargo.toml, .git, etc.) detected in {:?}.", source);
-                print!("      Do you want to proceed with Sealing this directory anyway? (y/N): ");
-                use std::io::{self, Write};
-                io::stdout().flush()?;
-                let mut input = String::new();
-                io::stdin().read_line(&mut input)?;
-                if !input.trim().to_lowercase().starts_with('y') {
-                    println!("   ❌ Build aborted by user.");
-                    return Ok(());
-                }
-            }
-
-            // 1. Ensure Configuration Files exist (Lazy Init)
-            ensure_config_files(source)?;
-            if let Some(out_str) = output.to_str() {
-                add_output_to_ignore(source, out_str)?;
-            }
-
-            // 1. Calculate Identity (Verification)
-            println!("   Scanning and Sealing...");
-            
-            // Ghosting candidate detection (for runtime linking, NOT for hash exclusion)
-            // Hash exclusion is handled by .opensealignore only
-            let _ghost_candidates: Vec<&str> = if let Some(d) = deps.as_ref() {
-                vec![d.as_str()]
+            // 1. Extract Digest (support both formats)
+            let digest = if image.contains("@sha256:") {
+                // Registry format: user/api@sha256:abc...
+                image.split('@').nth(1)
+                    .ok_or_else(|| anyhow!("Invalid image format"))?
+                    .to_string()
             } else {
-                vec!["node_modules", "venv", ".venv", "env", "target"]
+                // Local development: use Image ID
+                let output = Command::new("docker")
+                    .args(&["inspect", &image, "--format={{.Id}}"])
+                    .output()?;
+
+                if !output.status.success() {
+                    return Err(anyhow!(
+                        "❌ Image '{}' not found.\n\
+                         \n\
+                         For production: Use digest format (user/api@sha256:...)\n\
+                         For development: Ensure image exists locally",
+                        image
+                    ));
+                }
+
+                let id = String::from_utf8(output.stdout)?.trim().to_string();
+                println!("   ⚠️  Development mode: Using Image ID instead of digest");
+                id
             };
-            
-            // Compute identity WITHOUT exclude_dirs (rely on .opensealignore)
-            let identity = openseal_core::compute_project_identity(source)?;
-            println!("   ✅ Root A-Hash: {}", identity.root_hash.to_hex());
-            println!("   Files Indexed: {}", identity.file_count);
 
-            // 2. Prepare Output
-            if output.exists() {
-                println!("   Cleaning previous build...");
-                // CRITICAL: Use read_link to detect and safely remove symlinks without following them
-                for entry in fs::read_dir(output)? {
-                    let entry = entry?;
-                    let path = entry.path();
-                    if path.is_symlink() {
-                        fs::remove_file(&path)?; // Remove symlink itself, not target
-                    } else if path.is_dir() {
-                        fs::remove_dir_all(&path)?;
-                    } else {
-                        fs::remove_file(&path)?;
-                    }
-                }
-            } else {
-                fs::create_dir_all(output).context("Failed to create output directory")?;
-            }
+            println!("   ✅ Root Hash: {}", digest);
 
-            // 3. Copy Files (Packaging) using .gitignore respect
-            println!("   Copying source code...");
-            let walker = WalkBuilder::new(source)
-                .hidden(false)
-                .git_ignore(true)
-                .add_custom_ignore_filename(".opensealignore")
-                .require_git(false)
-                .build();
-
-            let mut copied_count = 0;
-            for result in walker {
-                match result {
-                    Ok(entry) => {
-                        let path = entry.path();
-                        if path.is_dir() { continue; }
-                        
-                        let relative_path = match path.strip_prefix(source) {
-                            Ok(p) => p,
-                            Err(_) => continue,
-                        };
-
-                        if path.starts_with(output) {
-                            continue;
-                        }
-
-                        let dest_path = output.join(relative_path);
-
-                        if let Some(parent) = dest_path.parent() {
-                            fs::create_dir_all(parent)?;
-                        }
-                        
-                        fs::copy(path, &dest_path)?;
-                        copied_count += 1;
-                    }
-                    Err(err) => eprintln!("Warning: {}", err),
-                }
-            }
-
-            // [FIX] Force copy config files to ensure Runtime respects ignore rules
-            // They might be ignored by walker if listed in .opensealignore (Self-exclusion)
-            for file in &[".opensealignore", ".openseal_mutable"] {
-                let src_path = source.join(file);
-                if src_path.exists() {
-                     let dest_path = output.join(file);
-                     fs::copy(&src_path, &dest_path)?;
-                }
-            }
-            println!("   Copied {} files to build directory.", copied_count);
-
-            // 4. Create & Write Seal Manifest
-            let mut manifest = serde_json::json!({
+            // 3. Create openseal.json (v1 format)
+            let openseal_json = serde_json::json!({
                 "version": "1.0.0",
-                "identity": identity,
-                "sealed": true,
-                "timestamp": chrono::Utc::now().to_rfc3339()
+                "image": {
+                    "reference": image,
+                    "digest": digest,
+                    "created_at": chrono::Utc::now().to_rfc3339()
+                },
+                "identity": {
+                    "root_hash": digest,
+                    "seal_version": "2.0"
+                }
             });
 
-            if let Some(cmd) = exec {
-                manifest["exec"] = serde_json::Value::String(cmd.clone());
-                println!("   Entry Command Registered: {}", cmd);
+            let json_path = Path::new("openseal.json");
+            fs::write(json_path, serde_json::to_string_pretty(&openseal_json)?)?;
+
+            println!("   📝 openseal.json created");
+            println!();
+            println!("🎉 Build complete!");
+            println!("   Root Hash: {}", digest);
+            println!();
+            println!("⚠️  IMPORTANT: Ensure the image is pushed to a registry.");
+            println!("   Other environments will fail if they can't pull this exact digest.");
+        }
+        Commands::Run { image, port, allow_network } => {
+            println!("🚀 OpenSeal v1.0.0-alpha.1: Starting Container");
+            println!("   Image: {}", image);
+            println!("   Public Port: {}", port);
+
+            // 1. Load openseal.json
+            let json_path = Path::new("openseal.json");
+            if !json_path.exists() {
+                return Err(anyhow!("❌ openseal.json not found. Run 'openseal build' first."));
             }
 
-            // 5. Dependency Ghosting (Automated Linking)
-            println!("   🔗 Ghosting Dependencies (Runtime-only Linking)...");
+            let json_content = fs::read_to_string(json_path)?;
+            let json: serde_json::Value = serde_json::from_str(&json_content)?;
             
-            // Collect candidates
-            let mut candidates = vec![];
-            if let Some(explicit_deps) = deps {
-                candidates.push(explicit_deps.clone());
+            let expected_digest = json["identity"]["root_hash"]
+                .as_str()
+                .ok_or_else(|| anyhow!("Invalid openseal.json"))?;
+
+            // 2. Verify image digest matches
+            let actual_digest = if image.contains("@sha256:") {
+                image.split('@').nth(1)
+                    .ok_or_else(|| anyhow!("Image must include digest"))?
+                    .to_string()
             } else {
-                // Auto-detect common patterns
-                candidates.extend(vec![
-                    "node_modules".to_string(),
-                    "venv".to_string(),
-                    ".venv".to_string(),
-                    "env".to_string(),
-                ]);
-            }
-
-
-            let mut linked_any = false;
-            let mut linked_deps = Vec::new();
-            for dep_name in candidates {
-                let dep_src = source.join(&dep_name);
-                if dep_src.exists() && dep_src.is_dir() {
-                    let dep_dest = output.join(&dep_name);
-                    
-                    // Create symbolic link (platform specific)
-                    #[cfg(unix)]
-                    {
-                        use std::os::unix::fs::symlink;
-                        // Remove existing symlink if present (for rebuild compatibility)
-                        if dep_dest.exists() || dep_dest.is_symlink() {
-                            let _ = fs::remove_file(&dep_dest);
-                        }
-                        
-                        // Use absolute path for target to avoid recursive symlink in child directory
-                        let src_abs = fs::canonicalize(&dep_src).context(format!("Failed to resolve absolute path for {:?}", dep_src))?;
-
-                        if let Err(e) = symlink(&src_abs, &dep_dest) {
-                            eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
-                        } else {
-                            println!("   ✅ Automatically ghosted: {}", dep_name);
-                            linked_any = true;
-                            linked_deps.push(dep_name.clone());
-                        }
-                    }
-
-                    #[cfg(windows)]
-                    {
-                        use std::os::windows::fs::symlink_dir;
-                        // Remove existing symlink if present (for rebuild compatibility)
-                        if dep_dest.exists() || dep_dest.is_symlink() {
-                            let _ = fs::remove_file(&dep_dest);
-                        }
-
-                        let src_abs = fs::canonicalize(&dep_src).context(format!("Failed to resolve absolute path for {:?}", dep_src))?;
-
-                        if let Err(e) = symlink_dir(&src_abs, &dep_dest) {
-                            eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
-                        } else {
-                            println!("   ✅ Automatically ghosted: {}", dep_name);
-                            linked_any = true;
-                            linked_deps.push(dep_name.clone());
-                        }
-                    }
-                }
-            }
-
-            // Record all linked dependencies in manifest
-            if !linked_deps.is_empty() {
-                manifest["deps"] = serde_json::Value::Array(
-                    linked_deps.into_iter().map(serde_json::Value::String).collect()
-                );
-            }
-
-            if !linked_any && deps.is_some() {
-                println!("   ⚠️  Warning: Explicitly requested deps folder {:?} not found.", deps.as_ref().unwrap());
-            }
-
-            // 6. Save Manifests
-            // [AUTO-GEN] Write to Source (The Proclaimed Identity)
-            let source_manifest_path = source.join("openseal.json");
-            let source_file = fs::File::create(&source_manifest_path)?;
-            serde_json::to_writer_pretty(source_file, &manifest)?;
-            println!("   Identity Manifest saved to {:?}", source_manifest_path);
-            
-            // Write to Output (The Bundled Identity)
-            let output_manifest_path = output.join("openseal.json");
-            let output_file = fs::File::create(output_manifest_path)?;
-            serde_json::to_writer_pretty(output_file, &manifest)?;
-
-            println!("   ✨ Build Complete! Artifacts in {:?}", output);
-        },
-        Commands::Run { app, public_port, cmd, daemon, dependency, log_file } => {
-            // Daemon mode: re-execute self in background
-            if *daemon {
-                println!("🚀 Starting OpenSeal in daemon mode...");
-                println!("   Log file: {}", log_file);
-                
-                let current_exe = std::env::current_exe()?;
-                let mut args = vec![
-                    "run".to_string(),
-                    "--app".to_string(),
-                    app.to_str().unwrap().to_string(),
-                    "--port".to_string(),
-                    public_port.to_string(),
-                ];
-                
-                if let Some(c) = cmd {
-                    args.push("--cmd".to_string());
-                    args.push(c.clone());
-                }
-
-                if let Some(dep) = dependency {
-                    args.push("--dependency".to_string());
-                    args.push(dep.clone());
-                }
-
-                let log_file_path = PathBuf::from(log_file);
-                let log_handle = fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&log_file_path)?;
-
-                Command::new(current_exe)
-                    .args(&args)
-                    .stdout(log_handle.try_clone()?)
-                    .stderr(log_handle)
-                    .spawn()
-                    .context("Failed to spawn daemon process")?;
-
-                println!("   ✅ OpenSeal daemon started");
-                println!("   📝 View logs: tail -f {}", log_file_path.display());
-                println!("   🛑 Stop: pkill -f 'openseal run'");
-                return Ok(());
-            }
-
-            println!("🚀 OpenSeal Runner v{}", env!("CARGO_PKG_VERSION"));
-            println!("   Bundle: {:?}", app);
-
-            // 1. Prepare Runtime (Integrity Check & Dependency Management)
-            // This MUST happen before spawning the app
-            let project_identity = prepare_runtime(app, dependency.clone()).await?;
-            println!("   ✅ Live A-hash: {}", project_identity.root_hash.to_hex());
-            println!("   📄 Files Sealed: {}", project_identity.file_count);
-
-            // 2. Validating Bundle for exec command
-            let manifest_path = app.join("openseal.json");
-            if !manifest_path.exists() {
-                return Err(anyhow!("Invalid OpenSeal Bundle: openseal.json not found in {:?}", app));
-            }
-            let file = fs::File::open(&manifest_path)?;
-            let manifest: serde_json::Value = serde_json::from_reader(file)?;
-            
-            // 2. Determine Command
-            let run_cmd = if let Some(c) = cmd {
-                c.clone()
-            } else if let Some(c) = manifest.get("exec").and_then(|v| v.as_str()) {
-                c.to_string()
-            } else {
-                return Err(anyhow!("No execution command found. Please use --cmd or specify during build."));
+                // Development mode: get Image ID
+                let output = Command::new("docker")
+                    .args(&["inspect", &image, "--format={{.Id}}"])
+                    .output()?;
+                String::from_utf8(output.stdout)?.trim().to_string()
             };
 
-            // 3. Find Ephemeral Port
-            let listener = TcpListener::bind("127.0.0.1:0").await?;
-            let internal_port = listener.local_addr()?.port();
-            drop(listener); // Close so child can use it? No, child binds to it.
-            // Wait, we need to pick a port for the child app to listen ON.
-            // We just found a free one.
-            
-            // println!("   🔒 Caller Monopoly Active");
-            println!("   🌐 Proxy Port (Public): {}", public_port);
-            // println!("   🔌 Internal Port (Hidden): {}", internal_port);
-            // println!("   🛠️  Service Command: {}", run_cmd);
+            if expected_digest != actual_digest {
+                return Err(anyhow!(
+                    "🚨 Security Breach: Image Digest Mismatch!\n\
+                     Expected: {}\n\
+                     Actual:   {}\n\
+                     Image has been modified since build.",
+                    expected_digest, actual_digest
+                ));
+            }
 
-            // 4. Spawn Child Process (Using shell for command string support & environment stability)
-            let mut cmd_builder = if cfg!(target_os = "windows") {
-                let mut c = Command::new("cmd");
-                c.arg("/C").arg(&run_cmd);
-                c
+            println!("   ✅ Digest verified: {}", actual_digest);
+
+            // 3. Start container (Daemon Mode)
+            let container_name = format!("openseal_runtime_{}", chrono::Utc::now().timestamp());
+            let internal_port = 3000; // Default internal port
+            let port_mapping = format!("127.0.0.1:{}:{}", internal_port, internal_port);
+
+            let mut docker_args = vec![
+                "run", "-d",
+                "--name", &container_name,
+                "--rm",
+                "--read-only",
+                "--cap-drop=ALL",
+                "--security-opt=no-new-privileges",
+                "-p", &port_mapping,
+            ];
+
+            // Network setup
+            if allow_network.is_empty() {
+                // v1.0.0-alpha.1: Use bridge for development (allows external API calls)
+                // TODO: Implement strict isolation with whitelist in beta
+                docker_args.push("--network=bridge");
+                println!("   ⚠️  Network: bridge (development mode - no whitelist yet)");
             } else {
-                let mut c = Command::new("sh");
-                c.arg("-c").arg(&run_cmd);
-                c
+                println!("   📡 Network whitelist: {:?}", allow_network);
+                // TODO: Implement DNS resolve + iptables
+                docker_args.push("--network=bridge");
+            }
+
+            docker_args.push(&image);
+
+            println!("   🐳 Starting container...");
+            let output = Command::new("docker")
+                .args(&docker_args)
+                .output()?;
+
+            if !output.status.success() {
+                return Err(anyhow!(
+                    "Failed to start container:\n{}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+
+            let container_id = String::from_utf8(output.stdout)?.trim().to_string();
+            println!("   ✅ Container started: {}", &container_id[..12]);
+
+            // 4. Health Check (wait for port)
+            println!("   ⏳ Waiting for health check...");
+            use std::net::TcpStream;
+            use std::time::{Duration, Instant};
+
+            let start = Instant::now();
+            let addr = format!("127.0.0.1:{}", internal_port);
+            let mut connected = false;
+
+            while start.elapsed() < Duration::from_secs(30) {
+                if TcpStream::connect(&addr).is_ok() {
+                    connected = true;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(500));
+            }
+
+            if !connected {
+                // Cleanup
+                let _ = Command::new("docker").args(&["stop", &container_id]).output();
+                return Err(anyhow!("Health check timeout: Container failed to respond"));
+            }
+
+            println!("   ✅ Container ready");
+            println!();
+            println!("🔐 Starting OpenSeal Proxy on port {}...", port);
+            println!("   → Forwarding to container: 127.0.0.1:{}", internal_port);
+            println!();
+
+            // 5. Create ProjectIdentity from openseal.json (v1 format)
+            let root_hash_str = expected_digest;
+            let root_hash_bytes = if root_hash_str.starts_with("sha256:") {
+                hex::decode(&root_hash_str[7..])
+                    .map_err(|e| anyhow!("Invalid digest hex: {}", e))?
+            } else {
+                return Err(anyhow!("Invalid digest format"));
             };
 
-            // println!("   ✨ Spawning Application (Sanitized Environment)...");
-            let mut child = cmd_builder
-                .current_dir(app)
-                .env_clear() // 🛡️ Security: Clear all host environment variables
-                .env("PORT", internal_port.to_string())
-                .env("OPENSEAL_PORT", internal_port.to_string())
-                .env("PATH", std::env::var("PATH").unwrap_or_default()) 
-                .env("HOME", std::env::var("HOME").unwrap_or_default())
-                .env("USER", std::env::var("USER").unwrap_or_default())
-                .env("TERM", std::env::var("TERM").unwrap_or_default())
-                .env("PWD", app.to_str().unwrap_or_default())
-                .env("TMPDIR", std::env::var("TMPDIR").unwrap_or_default()) // Needed for some build tools
-                .env("NODE_ENV", "production") 
-                .env("PYTHONDONTWRITEBYTECODE", "1")
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .spawn()
-                .context("Failed to spawn application. Make sure the command exists and dependencies are installed.")?;
+            let root_hash = blake3::Hash::from_bytes(
+                root_hash_bytes.as_slice().try_into()
+                    .map_err(|_| anyhow!("Invalid hash length"))?
+            );
 
-            // Dynamic Port Polling (Security & Reliability)
-            wait_for_port(internal_port, 30).await?;
+            let project_identity = openseal_core::ProjectIdentity {
+                root_hash,
+                file_count: 0, // Docker images don't have file count
+                mutable_files: vec![], // No mutable files in v1 (containers are immutable)
+            };
 
-            // 5. Start Runtime Proxy with Graceful Shutdown
+            // 6. Start Proxy Server (blocking)
             let target_url = format!("http://127.0.0.1:{}", internal_port);
-            
-            // Use tokio::select to handle both proxy and Ctrl+C
-            tokio::select! {
-                res = run_proxy_server(*public_port, target_url, app.clone(), project_identity) => {
-                    if let Err(e) = res {
-                         eprintln!("   ❌ Runtime Error: {}", e);
-                    }
-                },
-                _ = tokio::signal::ctrl_c() => {
-                    println!("\n   🛑 Received Ctrl+C, shutting down...");
-                }
-            }
+            let project_root = std::env::current_dir()?;
 
-            let _ = child.kill(); 
-            let _ = child.wait(); // Prevent zombie processes
-        },
+            println!("📡 Proxy Server Ready!");
+            println!("   Public: http://0.0.0.0:{}", port);
+            println!("   Target: {}", target_url);
+            println!();
+            println!("💡 Test with:");
+            println!("   curl -H \"X-OpenSeal-Wax: test123\" http://localhost:{}/api/v1/price/BTC", port);
+            println!();
+
+            // Spawn log streaming in background
+            let container_id_clone = container_id.clone();
+            tokio::spawn(async move {
+                let _ = tokio::process::Command::new("docker")
+                    .args(&["logs", "-f", &container_id_clone])
+                    .stdout(std::process::Stdio::inherit())
+                    .stderr(std::process::Stdio::inherit())
+                    .spawn();
+            });
+
+            // Register Ctrl+C handler for cleanup
+            let container_id_cleanup = container_id.clone();
+            tokio::spawn(async move {
+                tokio::signal::ctrl_c().await.ok();
+                println!("\n🛑 Shutting down...");
+                let _ = tokio::process::Command::new("docker")
+                    .args(&["stop", &container_id_cleanup])
+                    .output()
+                    .await;
+                println!("   ✅ Container stopped");
+                std::process::exit(0);
+            });
+
+            // Start the proxy (blocking call)
+            openseal_runtime::run_proxy_server(port, target_url, project_root, project_identity).await?;
+        }
         Commands::Verify { response, wax, root_hash } => {
-            println!("🔍 OpenSeal Verifier (Dev Mode)");
-            println!("   Response File: {:?}", response);
-            println!("   Wax Challenge: {}", wax);
-            if let Some(h) = root_hash {
-                println!("   Expected Root: {}", h);
-            }
-
-            let content = fs::read_to_string(response).context("Failed to read response file")?;
-            let json: serde_json::Value = serde_json::from_str(&content).context("Failed to parse JSON")?;
-
-            // Delegate to core verification logic
-            let report = openseal_core::verify_seal(&json, wax, root_hash.as_deref())?;
-
-            println!("\n🔍 Verification Report:");
-            println!("   Signature Valid: {}", if report.signature_verified { "✅" } else { "❌" });
-            println!("   Binding Valid:   {}", if report.binding_verified { "✅" } else { "❌" });
-            if root_hash.is_some() {
-                println!("   Identity Valid:  {}", if report.identity_verified { "✅" } else { "❌" });
-            }
-            println!("   ----------------------------------------");
-            println!("   Result: {}", report.message);
-
-            if !report.valid {
-                std::process::exit(1);
-            }
+            verify_seal(&response, &wax, root_hash.as_deref())?;
         }
     }
 
     Ok(())
 }
 
-fn ensure_config_files(source: &Path) -> Result<()> {
-    let ignore_path = source.join(".opensealignore");
-    if !ignore_path.exists() {
-        println!("   📝 Creating default .opensealignore...");
-        fs::write(&ignore_path, "# OpenSeal Ignore Rules\n# Add files/folders to exclude from the File Integrity Check (A-hash)\n# Syntax is same as .gitignore\n\nnode_modules/\nvenv/\n__pycache__/\n.env\n*.md\n\n# Build Outcomes (Source Integrity Only)\ndist/\nbuild/\n\n# OpenSeal Artifacts (Self-exclusion)\nopenseal.json\n.opensealignore\n.openseal_mutable\n")?;
-    } else {
-        // [AUTO-FIX] Ensure openseal.json is ignored to prevent spiral hashing
-        let content = fs::read_to_string(&ignore_path)?;
-        if !content.contains("openseal.json") {
-            println!("   🔧 Auto-patching .opensealignore: Adding openseal.json exclusion");
-            let mut file = fs::OpenOptions::new().append(true).open(&ignore_path)?;
-            use std::io::Write;
-            writeln!(file, "\n# Auto-added by OpenSeal CLI\nopenseal.json")?;
-        }
-    }
+/// Verifies a sealed response file
+fn verify_seal(response_path: &str, wax: &str, expected_root: Option<&str>) -> Result<()> {
+    println!("🔍 Verifying seal...");
 
-    let mutable_path = source.join(".openseal_mutable");
-    if !mutable_path.exists() {
-        println!("   📝 Creating default .openseal_mutable...");
-        fs::write(&mutable_path, "# OpenSeal Mutable Files\n# Add files whose presence is sealed but content can change\n# (e.g., local databases, logs)\n\n# *.db\n# logs/\n")?;
-    }
-    Ok(())
-}
-
-fn add_output_to_ignore(source: &Path, output: &str) -> Result<()> {
-    let ignore_path = source.join(".opensealignore");
-    let content = fs::read_to_string(&ignore_path)?;
+    // 1. Read and Parse JSON
+    let content = fs::read_to_string(response_path)
+        .context(format!("Failed to read response file: {}", response_path))?;
     
-    let output_pattern = format!("{}/", output.trim_end_matches('/'));
-    
-    // Check if the output directory is already ignored
-    let already_ignored = content.lines().any(|l| {
-        let trimmed = l.trim();
-        trimmed == output_pattern || trimmed == output.trim_end_matches('/')
-    });
+    let json: serde_json::Value = serde_json::from_str(&content)
+        .context("Failed to parse JSON response")?;
 
-    if !already_ignored {
-        println!("   🔧 Auto-patching .opensealignore: Adding output directory exclusion ({})", output_pattern);
-        let mut file = fs::OpenOptions::new().append(true).open(&ignore_path)?;
-        use std::io::Write;
-        writeln!(file, "\n# OpenSeal output (auto-added)\n{}", output_pattern)?;
+    // 2. Extract Components
+    let openseal = json.get("openseal")
+        .ok_or_else(|| anyhow!("Missing 'openseal' field"))?;
+    
+    let result = json.get("result")
+        .ok_or_else(|| anyhow!("Missing 'result' field"))?;
+
+    let a_hash_hex = openseal.get("a_hash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing or invalid 'a_hash'"))?;
+        
+    let b_hash_hex = openseal.get("b_hash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing or invalid 'b_hash'"))?;
+        
+    let signature_hex = openseal.get("signature")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing or invalid 'signature'"))?;
+        
+    let pub_key_hex = openseal.get("pub_key")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing or invalid 'pub_key'"))?;
+
+    println!("   🔑 Public Key: {}", pub_key_hex);
+    println!("   🆔 A-hash:    {}", a_hash_hex);
+
+    // 3. Compute Result Hash (Canonicalization)
+    // MUST match runtime logic: serde_json::to_string(&result)
+    let result_str = serde_json::to_string(result)?;
+    let result_hash = blake3::hash(result_str.as_bytes()).to_hex().to_string();
+
+    // 4. Reconstruct Message
+    // format!("{}{}{}{}", wax_hex, a_hash_hex, b_hash_hex, result_hash)
+    // IMPORTANT: Verify format matches openseal-runtime/src/lib.rs sign_payload
+    
+    // In runtime: wax_hex is passed as string
+    let message = format!("{}{}{}{}", wax, a_hash_hex, b_hash_hex, result_hash);
+    
+    // 5. Verify Signature
+    let pub_key_bytes = hex::decode(pub_key_hex)
+        .context("Failed to decode public key hex")?;
+    let pub_key: [u8; 32] = pub_key_bytes.try_into()
+        .map_err(|_| anyhow!("Invalid public key length"))?;
+    
+    let verifying_key = VerifyingKey::from_bytes(&pub_key)
+        .map_err(|_| anyhow!("Invalid public key format"))?;
+
+    let signature_vec = hex::decode(signature_hex)
+        .context("Failed to decode signature hex")?;
+    
+    let signature_bytes: [u8; 64] = signature_vec.try_into()
+        .map_err(|_| anyhow!("Invalid signature length. Expected 64 bytes."))?;
+        
+    let signature = Signature::from_bytes(&signature_bytes);
+
+    match verifying_key.verify(message.as_bytes(), &signature) {
+        Ok(_) => {
+            println!("   ✅ Signature Verified!");
+        }
+        Err(e) => {
+            return Err(anyhow!("❌ Signature Verification Failed: {}", e));
+        }
+    }
+
+    // 6. Optional: Verify Identity (Root Hash)
+    if let Some(expected) = expected_root {
+        println!("🔍 Verifying identity...");
+        
+        let root_hash_hex = if expected.starts_with("sha256:") {
+            &expected[7..]
+        } else {
+            expected
+        };
+
+        let root_hash_bytes = hex::decode(root_hash_hex)
+            .map_err(|e| anyhow!("Invalid digest hex: {}", e))?;
+            
+        let root_hash = blake3::Hash::from_bytes(
+            root_hash_bytes.as_slice().try_into()
+                .map_err(|_| anyhow!("Invalid hash length"))?
+        );
+
+        // a_hash = Blake3(RootHash || Wax) (Using Core)
+        let computed_a = openseal_core::compute_a_hash(&root_hash, wax);
+        let computed_a_hex = computed_a.to_hex().to_string();
+        
+        if computed_a_hex != a_hash_hex {
+            return Err(anyhow!(
+                "❌ Identity Mismatch!\n   Expected A-hash: {}\n   Actual A-hash:   {}",
+                computed_a_hex, a_hash_hex
+            ));
+        }
+        println!("   ✅ Identity Verified (Matches Root Hash)");
     }
 
     Ok(())
-}
-
-fn is_project_root(path: &Path) -> bool {
-    let indicators = [
-        "package.json",    // Node.js
-        "Cargo.toml",      // Rust
-        "requirements.txt", // Python
-        "pyproject.toml",  // Python
-        "go.mod",         // Go
-        "composer.json",   // PHP
-        "Gemfile",        // Ruby
-        ".git",           // Version Control
-        ".opensealignore"  // Existing OpenSeal project
-    ];
-
-    for indicator in &indicators {
-        if path.join(indicator).exists() {
-            return true;
-        }
-    }
-    false
 }

@@ -1,6 +1,6 @@
 [package]
 name = "openseal-core"
-version = "0.2.62"
+version = "1.0.0-alpha.1"
 edition = "2021"
 
 [dependencies]

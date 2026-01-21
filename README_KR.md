@@ -1,61 +1,170 @@
+# 🔐 OpenSeal v1.0.0-alpha.1
+
 [🇺🇸 English Version](./README.md)
 
-# 🔐 OpenSeal: 10초 만에 '검증 가능한 API' 만들기
+**신뢰할 수 있는 컨테이너 실행기**: 모든 Docker 컨테이너를 암호학적 증명이 포함된 검증 가능한 API로 변환합니다.
 
-내 서비스 안에서 내 API 서비스를 단 한 줄도 수정하지 않고, 코드가 변조되지 않았음을 고객에게 수학적으로 증명하세요.
-
-### 1. 설치 (바이너리 권장)
-```bash
-# 최신 바이너리를 다운로드하여 설치합니다.
-curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
-```
-> **주의**: 핵심 보안 로직 보호를 위해 `cargo install`을 통한 소스 컴파일은 더 이상 지원하지 않습니다. 제공된 바이너리를 사용해 주세요.
-
-### 2. 봉인 (Build)
-> [!IMPORTANT]
-> 모든 OpenSeal 명령어는 반드시 **프로젝트 루트** 디렉토리에서 실행해야 합니다.
-
-```bash
-# Node.js 예시: 실행 명령어를 등록하고, 'dist_opensealed' 폴더에 저장
-openseal build --exec "node app.js" --output dist_opensealed
-```
-> [!TIP]
-> Python, Go, Rust 등 **다른 언어별 최적화 명령어**는 [사용 가이드(USAGE)](./docs/public/USAGE_KR.md#2-언어별-퀵스타트-quickstart-by-language)에서 확인하세요.
-
-### 3. 실행 (Run)
-```bash
-# 원하는 포트 지정 (OpenSeal이 내부 포트를 자동 관리)
-openseal run --app dist_opensealed --port 3000
-```
-
-**✅ 끝!** 당신의 API 서비스는 이제 모든 실행 결과에 대해 위조 불가능한 암호학적 인감(Seal)을 찍어 보냅니다.
+> ⚠️ **알파 릴리즈**: 초기 프리뷰 버전입니다. 프로덕션 사용은 권장하지 않습니다.
 
 ---
 
-### 🔐 보호된 런타임 (Protected Runtime)
+## OpenSeal이란?
 
-OpenSeal의 인감 생성 엔진은 '보호된 런타임' 형태로 배포됩니다. 이는 보안을 위한 의도적인 설계입니다.
-- 모든 **검증 로직(Verification)은 OSIP-7325를 통해 투명하게 공개**됩니다.
-- 제3자는 누구나 독립적으로 인감의 유효성을 검증할 수 있습니다.
-- 다만, **인감 생성 과정은 의도적으로 보호된 경계 내에 제한**되어, 위조나 리플레이 공격, 혹은 적대적 환경에서의 메모리 패킹 공격을 원천 차단합니다.
-
-이는 Secure Enclave (TEE), HSM 기반 서명 서비스, 에지 실행 런타임 등에서 사용하는 업계 표준 보안 설계를 따르는 것입니다.
+OpenSeal은 Docker 컨테이너를 **암호학적 신원**으로 래핑하여 모든 API 응답을:
+- ✅ **검증 가능**: Ed25519 서명으로 진위 증명
+- ✅ **변조 감지**: 수정 시 Seal 파괴
+- ✅ **부인 방지**: 수학적 출처 증명
 
 ---
 
-### 🛡️ 위협 모델 및 보장 (Threat Model)
+## 빠른 시작
 
-| 보안 목표 | OpenSeal의 보장 |
-| :--- | :--- |
-| **결과 무결성** | 결과값이 변조되지 않고 봉인된 코드에서 도출되었음을 수학적으로 증명합니다. |
-| **정체성 바인딩** | 실행된 코드가 승인된 상태(A-hash)와 일치함을 보장합니다. |
-| **재사용 방지** | Wax(난수)를 통해 과거의 인감을 현재 요청에 재사용하는 것을 방지합니다. |
-| **개인정보 보호** | 데이터 수집을 하지 않으며, 생성 코어는 외부와 통신하지 않습니다. |
+### API 사용자용
+```bash
+# Seal된 API 조회
+curl -H "X-OpenSeal-Wax: myChallenge" http://api.example.com/endpoint
+```
+
+암호학적 증명 포함 응답:
+```json
+{
+  "openseal": {
+    "a_hash": "...",
+    "b_hash": "...",
+    "signature": "...",
+    "pub_key": "..."
+  },
+  "result": { "데이터": "결과" }
+}
+```
+
+**[→ 제공자 가이드](./docs/public/PROVIDER_GUIDE_KR.md)** | **[→ Provider Guide (EN)](./docs/public/PROVIDER_GUIDE.md)**
+
+### 개발자용 (시드 제공자)
+```bash
+# 1. API 생성
+# 2. Dockerfile 작성
+docker build -t my-api:v1 .
+
+# 3. GitHub에 push
+docker push ghcr.io/yourorg/my-api:v1
+
+# 4. openseal.json 배포
+openseal build --image ghcr.io/yourorg/my-api:v1
+```
+
+**[→ 시드 제공자 가이드](./docs/public/SEED_PROVIDER_GUIDE_KR.md)** | **[→ Seed Provider Guide (EN)](./docs/public/SEED_PROVIDER_GUIDE.md)**
+
+### 검증자용
+
+```bash
+# Seal된 API 조회 및 검증
+curl -H "X-OpenSeal-Wax: challenge" http://api.example.com/endpoint
+```
+
+**[→ 검증자 가이드](./docs/public/VERIFIER_GUIDE_KR.md)** | **[→ Verifier Guide (EN)](./docs/public/VERIFIER_GUIDE.md)**
 
 ---
 
-## 📖 더 알아보기
-* [프로토콜 규격 (PROTOCOL)](./docs/public/PROTOCOL_KR.md)
-* [보안 정책 및 전략 (POLICY)](./docs/public/POLICY_KR.md)
-* [언어 중립성 및 소스 무결성 (AGNOSTICISM)](./docs/public/AGNOSTICISM_KR.md)
-* [사용 가이드 (USAGE)](./docs/public/USAGE_KR.md)
+## 예제: 암호화폐 가격 오라클
+
+암호학적 증명이 포함된 검증된 암호화폐 가격:
+
+```bash
+# 제공자 측
+git clone https://github.com/Gnomone/crypto-price-oracle.git
+cd crypto-price-oracle
+docker build -t crypto-oracle:v1 .
+openseal build --image crypto-oracle:v1
+openseal run --image crypto-oracle:v1 --port 8080
+
+# 사용자 측
+curl -X POST http://localhost:8080/api/v1/price \
+  -H "Content-Type: application/json" \
+  -H "X-OpenSeal-Wax: prove-it" \
+  -d '{"symbol":"BTC"}'
+```
+
+**전체 예제**: [crypto-price-oracle](https://github.com/Gnomone/crypto-price-oracle)
+
+---
+
+## 작동 원리
+
+```
+클라이언트 → OpenSeal 프록시 → 컨테이너
+            ↓
+       1. A-hash 계산 (신원)
+       2. 컨테이너로 전달
+       3. B-hash 계산 (결과 바인딩)
+       4. Ed25519 서명
+            ↓
+       Seal 포함 응답
+```
+
+**핵심 개념**:
+- **Root Hash**: Docker Image Digest (불변 신원)
+- **Wax**: 클라이언트 챌린지 (재생 공격 방지)
+- **A-hash**: `Blake3(Root Hash || Wax)`
+- **B-hash**: `b_G(A-hash, Wax, Result)` (비공개 함수)
+- **Signature**: `Ed25519.sign(Wax||A||B||ResultHash)`
+
+---
+
+## 문서
+
+### 사용자용
+- **[사용자 가이드](./docs/public/USER_GUIDE_KR.md)**: Seal된 API 조회 및 검증 방법
+- **[User Guide (EN)](./docs/public/USER_GUIDE.md)**
+
+### 제공자용
+- **[배포자 가이드](./docs/public/PROVIDER_GUIDE_KR.md)**: Seal된 서비스 배포 방법
+- **[Provider Guide (EN)](./docs/public/PROVIDER_GUIDE.md)**
+
+### 아키텍처 & 설계
+- **[CHANGELOG](./CHANGELOG.md)**: 버전 히스토리
+- **[V1 개발 지침](./docs/internal/v1/V1.0.0-ALPHA_DIRECTIVE_KR.md)**: 핵심 설계 결정
+- **[보안 모델](./docs/internal/TERMINOLOGY_KR.md)**: 암호학 용어
+
+---
+
+## 왜 v1인가? (Docker 기반)
+
+### v0 문제점
+- ❌ 환경 파편화 (PATH, 의존성)
+- ❌ 언어별 복잡성
+- ❌ 재현성 문제
+
+### v1 솔루션
+- ✅ Docker = 표준화된 패키징
+- ✅ 언어 독립적
+- ✅ Image Digest = 암호학적 신원
+- ✅ 산업 표준 격리
+
+**[전체 설명](./docs/internal/v1/V1_TRANSITION_STRATEGY_KR.md)**
+
+---
+
+## 로드맵
+
+- **v1.0.0-alpha.1** (현재): 핵심 기능 작동
+- **v1.0.0-beta.1** (다음): 네트워크 화이트리스트, 레지스트리 강제, 이미지 스캐닝
+- **v1.0.0** (안정): 프로덕션 준비
+
+---
+
+## 커뮤니티
+
+- **GitHub**: https://github.com/Gnomone/openseal
+- **HighStation**: Seal된 API 통합 플랫폼
+- **Discord**: 준비 중
+
+---
+
+## 라이선스
+
+MIT License - [LICENSE](./LICENSE) 참고
+
+---
+
+HighStation의 Trusted AI Infrastructure의 일환으로 ❤️를 담아 제작

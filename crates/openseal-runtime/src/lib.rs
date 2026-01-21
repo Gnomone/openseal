@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use ed25519_dalek::{SigningKey, Signer};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use std::io::{self, Write};
 use std::process::Command;
 
@@ -112,11 +112,32 @@ async fn handle_dependencies(
 ) -> anyhow::Result<()> {
     // 1. Explicit dependency specification
     if let Some(dep_dir) = dependency_hint {
-        let dep_path = project_root.join(&dep_dir);
-        // Use is_dir() which follows symlinks. 
-        // If the user explicitly provided this, we trust that the symlink/dir is "well-present".
+        let dep_path = std::path::Path::new(&dep_dir);
+        
+        // We check if the dependency source exists anywhere (could be absolute or relative to where openseal run was called)
         if dep_path.is_dir() {
-            println!("   ✅ Using existing dependencies: {}/", dep_dir);
+            let src_abs = std::fs::canonicalize(dep_path).context(format!("Failed to resolve absolute path for {:?}", dep_path))?;
+            
+            // Destination is "node_modules" inside the runtime project_root (e.g. dist_opensealed/node_modules)
+            let dep_dest = project_root.join("node_modules");
+            
+            // If it's already there and is a symlink, we check if it points to the right place.
+            // If it's not there, we create it.
+            if !dep_dest.exists() && !dep_dest.is_symlink() {
+                println!("   🔗 Linking dependencies: {} -> {:?}", dep_dir, src_abs);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::symlink;
+                    symlink(&src_abs, &dep_dest).context("Failed to create dependency symlink")?;
+                }
+                #[cfg(windows)]
+                {
+                    use std::os::windows::fs::symlink_dir;
+                    symlink_dir(&src_abs, &dep_dest).context("Failed to create dependency symlink")?;
+                }
+            } else {
+                println!("   ✅ Using existing dependencies: {}/", dep_dir);
+            }
             return Ok(());
         } else {
             eprintln!("   ⚠️  Specified dependency '{}' not found or is not a directory. Retrying with auto-detection...", dep_dir);

@@ -1,6 +1,6 @@
 [package]
 name = "openseal"
-version = "0.2.62"
+version = "1.0.0-alpha.2"
 edition = "2021"
 
 [dependencies]
@@ -15,3 +15,5 @@ openseal-runtime = { path = "../openseal-runtime" }
 tokio = { workspace = true, features = ["full"] }
 chrono = "0.4"
 hex = { workspace = true }
+ed25519-dalek = { workspace = true }
+ctrlc = "3.4"

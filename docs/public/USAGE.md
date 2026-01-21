@@ -6,7 +6,7 @@ This guide covers how to set up, execute, and safely manage your OpenSeal-protec
 
 ## 1. 5-Minute Quickstart
 
-### Step 1: Install CLI (v0.2.62+)
+### Step 1: Install CLI (v0.2.63+)
 ```bash
 curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh | bash
 hash -r
@@ -20,7 +20,7 @@ openseal build --exec "npm run dev" --output dist_opensealed
 ```
 
 > [!TIP]
-> **v0.2.62 Automation**: The output directory is now automatically added to `.opensealignore`. This ensures Hash reproducibility during rebuilds.
+> **v0.2.63 Automation**: The output directory is now automatically added to `.opensealignore`. This ensures Hash reproducibility during rebuilds.
 
 ### Step 3: Run
 ```bash

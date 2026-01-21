@@ -1,5 +1,6 @@
 # ============================================
 # OpenSeal Whitelist Gitignore (Harden Mode)
+# v1.0.0-alpha.1 Updated
 # ============================================
 
 # 1. Ignore everything by default
@@ -8,6 +9,7 @@
 !/.gitignore.*
 !/README.md
 !/README_KR.md
+!/CHANGELOG.md
 !/LICENSE
 !/install.sh
 !/openseal-linux
@@ -25,6 +27,7 @@
 
 # 3. Allow only public/official files in folders
 !/scripts/push-private.sh
+!/scripts/push-public.sh
 
 !/docs/public/
 !/docs/public/**
@@ -38,21 +41,29 @@
 !/crates/openseal-core/
 !/crates/openseal-core/**
 
-# 4. Explicitly BLOCK sensitive folders inside allowed ones (Extra Safety)
-# This acts as a secondary shield
+# 4. Explicitly BLOCK sensitive folders (⚠️ CRITICAL SECURITY)
+# openseal-secret contains b_G function - NEVER publish
 crates/openseal-secret/
 docs/internal/
 docs/archive/
 .archive/
+.history.md
 .env*
 *.key
 *.pem
 *.secret
 
-# 5. Build Artifacts
+# 5. v1.0.0 Specific: Block development artifacts
+dist_opensealed/
+openseal_runtime_*/
+.openseal_mutable
+
+# 6. Build Artifacts
 target/
 dist/
 build/
 **/*.rs.bk
 *.log
 .DS_Store
+Cargo.lock         # Allow in root, but block in subcrates
+node_modules/

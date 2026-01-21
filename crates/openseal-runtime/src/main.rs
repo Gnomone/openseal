@@ -21,5 +21,10 @@ struct Args {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    run_proxy_server(args.port, args.target, args.project_root).await
+    
+    // In stand-alone mode, we assume no dependency hint for now 
+    // or we could add it to Args.
+    let project_identity = openseal_runtime::prepare_runtime(&args.project_root, None).await?;
+    
+    run_proxy_server(args.port, args.target, args.project_root, project_identity).await
 }
