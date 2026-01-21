@@ -120,9 +120,21 @@ async fn main() -> Result<()> {
             // 2. Prepare Output
             if output.exists() {
                 println!("   Cleaning previous build...");
-                fs::remove_dir_all(output).context("Failed to clean output directory")?;
+                // CRITICAL: Use read_link to detect and safely remove symlinks without following them
+                for entry in fs::read_dir(output)? {
+                    let entry = entry?;
+                    let path = entry.path();
+                    if path.is_symlink() {
+                        fs::remove_file(&path)?; // Remove symlink itself, not target
+                    } else if path.is_dir() {
+                        fs::remove_dir_all(&path)?;
+                    } else {
+                        fs::remove_file(&path)?;
+                    }
+                }
+            } else {
+                fs::create_dir_all(output).context("Failed to create output directory")?;
             }
-            fs::create_dir_all(output).context("Failed to create output directory")?;
 
             // 3. Copy Files (Packaging) using .gitignore respect
             println!("   Copying source code...");
@@ -203,7 +215,9 @@ async fn main() -> Result<()> {
                 ]);
             }
 
+
             let mut linked_any = false;
+            let mut linked_deps = Vec::new();
             for dep_name in candidates {
                 let dep_src = source.join(&dep_name);
                 if dep_src.exists() && dep_src.is_dir() {
@@ -213,30 +227,42 @@ async fn main() -> Result<()> {
                     #[cfg(unix)]
                     {
                         use std::os::unix::fs::symlink;
+                        // Remove existing symlink if present (for rebuild compatibility)
+                        if dep_dest.exists() || dep_dest.is_symlink() {
+                            let _ = fs::remove_file(&dep_dest);
+                        }
                         if let Err(e) = symlink(&dep_src, &dep_dest) {
                             eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
                         } else {
                             println!("   ✅ Automatically ghosted: {}", dep_name);
                             linked_any = true;
+                            linked_deps.push(dep_name.clone());
                         }
                     }
 
                     #[cfg(windows)]
                     {
                         use std::os::windows::fs::symlink_dir;
+                        // Remove existing symlink if present (for rebuild compatibility)
+                        if dep_dest.exists() || dep_dest.is_symlink() {
+                            let _ = fs::remove_file(&dep_dest);
+                        }
                         if let Err(e) = symlink_dir(&dep_src, &dep_dest) {
                             eprintln!("   ⚠️  Failed to link {}: {}", dep_name, e);
                         } else {
                             println!("   ✅ Automatically ghosted: {}", dep_name);
                             linked_any = true;
+                            linked_deps.push(dep_name.clone());
                         }
                     }
-                    
-                    // Add to manifest for runtime awareness (optional but good for debugging)
-                    if linked_any && manifest.get("deps").is_none() {
-                         manifest["deps"] = serde_json::Value::String(dep_name);
-                    }
                 }
+            }
+
+            // Record all linked dependencies in manifest
+            if !linked_deps.is_empty() {
+                manifest["deps"] = serde_json::Value::Array(
+                    linked_deps.into_iter().map(serde_json::Value::String).collect()
+                );
             }
 
             if !linked_any && deps.is_some() {
