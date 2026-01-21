@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Build { source, output, exec, deps } => {
-            println!("OpenSeal Packaging System v0.3.0");
+            println!("OpenSeal Packaging System v0.2.2");
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 

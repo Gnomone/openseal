@@ -15,16 +15,52 @@ curl -L https://github.com/Gnomone/openseal/releases/latest/download/install.sh 
 ### Step 2: Seal (Build)
 ```bash
 # Run at your project root
-# Use --output to specify a separate directory (e.g., 'dist_opensealed') to avoid overwriting your build files
+# --exec: Specify the entry command (Required)
+# --deps: (Optional) Custom dependency folder to link (e.g., venv, libs)
 openseal build --exec "node app.js" --output dist_opensealed
 ```
 
 ### Step 3: Run (Sealing Active)
 ```bash
-# Use your original port (e.g., 3000)
-# OpenSeal handles internal port redirection automatically.
+# --app: Path to the sealed bundle
+# --port: Public port to expose
 openseal run --app dist_opensealed --port 3000
 ```
+
+---
+
+## 💡 Recommended Setup by Language
+
+### 🟢 Node.js
+- **Standard**: If `node_modules` is at the root, it’s linked automatically.
+- **Example**:
+  ```bash
+  openseal build --exec "npm run dev" --output dist_opensealed
+  ```
+
+### 🟡 Python
+- **Standard**: Automatically detects `venv`, `.venv`, or `env`.
+- **Custom**: If your environment is named `my_env`:
+  ```bash
+  openseal build --exec "python main.py" --deps my_env --output dist_opensealed
+  ```
+
+### 🔵 Go / Rust
+- For compiled binaries, ensure the binary is included in the sealed bundle.
+- **Example**:
+  ```bash
+  openseal build --exec "./my_app" --output dist_opensealed
+  ```
+
+---
+
+## 🛠️ Option Details
+
+| Option | Description | Note |
+| :--- | :--- | :--- |
+| `--exec` | The command to start your service inside the sealed environment. | e.g., `npm run dev`, `python app.py` |
+| `--deps` | Dependency path to exclude from A-Hash but link to the runtime. | Default auto-detects `node_modules`, `venv` |
+| `--output` | Directory for the sealed artifacts. | Recommended to use a separate folder |
 
 ### 🔵 Standard Identity Endpoint
 Any service running with `openseal run` automatically exposes a standard audit endpoint at `/.openseal/identity`. This allows external tools like **HighStation** to verify code integrity in real-time without requiring any modifications to your application code.
