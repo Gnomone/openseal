@@ -1,36 +1,40 @@
 # ============================================
-# PRIVATE BACKUP REPOSITORY - Minimal Exclusions
+# Layer D: Protected Core (NEVER COMMIT)
 # ============================================
-# This is for backup purposes - only exclude truly sensitive data
+crates/openseal-secret/
+docs/internal/
 
 # ============================================
-# Critical Security (ABSOLUTELY NEVER COMMIT)
+# Sensitive Data & Credentials
 # ============================================
+.env*
 *.key
 *.pem
 *.secret
-.env.production
-.env.secrets
+.archive/
+.history.md
 
 # ============================================
-# Build Artifacts (Can be regenerated)
+# Build Artifacts
 # ============================================
 target/
-openseal-linux
-*.rs.bk
+dist/
+build/
+**/*.rs.bk
 
 # ============================================
-# Temporary Files Only
+# Temporary & Test Files
 # ============================================
+tmp*/
+test_env_*/
+*.log
 *.swp
 *.tmp
-.DS_Store
+verify_openseal.sh
 
 # ============================================
-# Note: Unlike public repo, we KEEP:
-# - .history.md (for internal tracking)
-# - docs/internal/ (internal documentation)
-# - .archive/ (historical backups)
-# - *.log files (debugging records)
-# - .env* (except production secrets)
+# IDE & System
 # ============================================
+.vscode/
+.idea/
+.DS_Store
