@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Build { source, output, exec, deps } => {
-            println!("OpenSeal Packaging System v0.2.2");
+            println!("OpenSeal Packaging System v0.2.3");
             println!("   Source: {:?}", source);
             println!("   Output: {:?}", output);
 
@@ -258,7 +258,7 @@ async fn main() -> Result<()> {
             println!("   ✨ Build Complete! Artifacts in {:?}", output);
         },
         Commands::Run { app, public_port, cmd } => {
-            println!("🚀 OpenSeal Runner v0.2.2");
+            println!("🚀 OpenSeal Runner v0.2.3");
             println!("   Bundle: {:?}", app);
 
             // 1. Validating Bundle
