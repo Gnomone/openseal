@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Commands::Build { image } => {
-            println!("🐳 OpenSeal v1.0.0-alpha.1: Docker-Based Identity Builder");
+            println!("🐳 OpenSeal v1.0.0-alpha.3: Docker-Based Identity Builder");
             println!("   Image: {}", image);
 
             // 1. Extract Digest (support both formats)
@@ -117,7 +117,7 @@ async fn main() -> Result<()> {
             println!("   Other environments will fail if they can't pull this exact digest.");
         }
         Commands::Run { image, port, allow_network } => {
-            println!("🚀 OpenSeal v1.0.0-alpha.1: Starting Container");
+            println!("🚀 OpenSeal v1.0.0-alpha.3: Starting Container");
             println!("   Image: {}", image);
             println!("   Public Port: {}", port);
 
@@ -161,8 +161,10 @@ async fn main() -> Result<()> {
 
             // 3. Start container (Daemon Mode)
             let container_name = format!("openseal_runtime_{}", chrono::Utc::now().timestamp());
-            let internal_port = 3000; // Default internal port
-            let port_mapping = format!("127.0.0.1:{}:{}", internal_port, internal_port);
+            let internal_port = 3000; // Expected internal app port (e.g. crypto-oracle)
+            
+            // DYNAMIC PORT MAPPING: 127.0.0.1:0:3000 (Random Host Port -> Container 3000)
+            let port_mapping = format!("127.0.0.1:0:{}", internal_port);
 
             let mut docker_args = vec![
                 "run", "-d",
@@ -203,13 +205,36 @@ async fn main() -> Result<()> {
             let container_id = String::from_utf8(output.stdout)?.trim().to_string();
             println!("   ✅ Container started: {}", &container_id[..12]);
 
-            // 4. Health Check (wait for port)
+            // 4. Resolve Assigned Port
+            println!("   🔍 Resolving assigned port...");
+            let port_output = Command::new("docker")
+                .args(&["port", &container_id, &format!("{}/tcp", internal_port)])
+                .output()?;
+
+            if !port_output.status.success() {
+                let _ = Command::new("docker").args(&["stop", &container_id]).output();
+                return Err(anyhow!("Failed to resolve port mapping: {}", String::from_utf8_lossy(&port_output.stderr)));
+            }
+
+            let port_str = String::from_utf8(port_output.stdout)?;
+            // Output format like: "0.0.0.0:32768\n" or "127.0.0.1:32768\n"
+            // We need 32768
+            let assigned_port = port_str.split(':')
+                .last()
+                .ok_or_else(|| anyhow!("Invalid port output"))?
+                .trim()
+                .parse::<u16>()
+                .context("Failed to parse assigned port")?;
+
+            println!("   ✅ Container port {} mapped to {}", internal_port, assigned_port);
+
+            // 5. Health Check (wait for assigned port)
             println!("   ⏳ Waiting for health check...");
             use std::net::TcpStream;
             use std::time::{Duration, Instant};
 
             let start = Instant::now();
-            let addr = format!("127.0.0.1:{}", internal_port);
+            let addr = format!("127.0.0.1:{}", assigned_port);
             let mut connected = false;
 
             while start.elapsed() < Duration::from_secs(30) {
@@ -229,10 +254,10 @@ async fn main() -> Result<()> {
             println!("   ✅ Container ready");
             println!();
             println!("🔐 Starting OpenSeal Proxy on port {}...", port);
-            println!("   → Forwarding to container: 127.0.0.1:{}", internal_port);
+            println!("   → Forwarding to container: 127.0.0.1:{}", assigned_port);
             println!();
 
-            // 5. Create ProjectIdentity from openseal.json (v1 format)
+            // 6. Create ProjectIdentity from openseal.json (v1 format)
             let root_hash_str = expected_digest;
             let root_hash_bytes = if root_hash_str.starts_with("sha256:") {
                 hex::decode(&root_hash_str[7..])
@@ -252,8 +277,8 @@ async fn main() -> Result<()> {
                 mutable_files: vec![], // No mutable files in v1 (containers are immutable)
             };
 
-            // 6. Start Proxy Server (blocking)
-            let target_url = format!("http://127.0.0.1:{}", internal_port);
+            // 7. Start Proxy Server (blocking)
+            let target_url = format!("http://127.0.0.1:{}", assigned_port);
             let project_root = std::env::current_dir()?;
 
             println!("📡 Proxy Server Ready!");

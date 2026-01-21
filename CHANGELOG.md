@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-alpha.3] - 2026-01-22
+
+### Fixed
+- 📦 **Dynamic Port Mapping**: Fixed port conflict issue (`Bind for 0.0.0.0:3000 failed`) by assigning random host port to container and resolving it dynamically.
+  - Now safe to run multiple containers or when ports 3000/8080 are occupied.
+  - Proxy correctly forwards to the dynamically assigned internal port.
+
+## [1.0.0-alpha.2] - 2026-01-22
+
+### Added
+- 🛡️ **Verify Command**: Added `openseal verify` to cryptographically verify API responses.
+  - Usage: `openseal verify --response <file> --wax <challenge>`
+  - Supports `--root-hash` for identity verification.
+
 ## [1.0.0-alpha.1] - 2026-01-22
 
 ### 🎉 Major Architecture Change: Docker-Based Identity
