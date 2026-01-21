@@ -47,16 +47,36 @@ pub async fn run_proxy_server(port: u16, target_url: String, project_root: PathB
     });
 
     let app = Router::new()
+        .route("/.openseal/identity", any(identity_handler))
         .route("/*path", any(handler))
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&addr).await?;
     println!("🚀 OpenSeal Running on {}", addr);
+    println!("   Standard Identity Endpoint: http://{}/.openseal/identity", addr);
 
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Handler for /.openseal/identity endpoint
+/// Returns the runtime's identity (A-hash) without requiring the internal app to be running
+async fn identity_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // Simple identity response without requiring Wax challenge
+    // This is a public, read-only endpoint for discovery
+    let identity_response = serde_json::json!({
+        "service": "OpenSeal Runtime Identity",
+        "version": "0.2.0",
+        "identity": {
+            "a_hash": state.project_identity.root_hash.to_hex().to_string(),
+            "file_count": state.project_identity.file_count,
+        },
+        "status": "sealed"
+    });
+
+    (StatusCode::OK, axum::Json(identity_response)).into_response()
 }
 
 async fn handler(State(state): State<Arc<AppState>>, req: Request<Body>) -> impl IntoResponse {
